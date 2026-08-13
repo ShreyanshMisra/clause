@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: clause-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: VECTOR_BACKEND
+        value: local
+      - key: ALLOWED_ORIGINS
+        sync: false
