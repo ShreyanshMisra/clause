@@ -25,6 +25,8 @@ def _build_env_llm():
 def _init_llm():
     if state.llm is None:
         state.llm = _build_env_llm()
+    from app.bootstrap import seed_local_if_needed
+    seed_local_if_needed(state.vector_store, state.llm)
 
 @app.get("/health")
 def health():
