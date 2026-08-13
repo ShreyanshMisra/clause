@@ -78,16 +78,33 @@ class SnowflakeVectorStore:
             cur.close()
 
 
+def _load_private_key(path: str):
+    from cryptography.hazmat.primitives import serialization
+    with open(path, "rb") as f:
+        key = serialization.load_pem_private_key(f.read(), password=None)
+    return key.private_bytes(
+        encoding=serialization.Encoding.DER,
+        format=serialization.PrivateFormat.PKCS8,
+        encryption_algorithm=serialization.NoEncryption(),
+    )
+
+
 def _default_snowflake_conn():
     import snowflake.connector
-    return snowflake.connector.connect(
+    kwargs = dict(
         account=os.environ["SNOWFLAKE_ACCOUNT"],
         user=os.environ["SNOWFLAKE_USER"],
-        password=os.environ["SNOWFLAKE_PASSWORD"],
         warehouse=os.environ.get("SNOWFLAKE_WAREHOUSE"),
         database=os.environ.get("SNOWFLAKE_DATABASE"),
         schema=os.environ.get("SNOWFLAKE_SCHEMA"),
     )
+    # Prefer key-pair auth (works with MFA-enforced accounts); fall back to password.
+    key_path = os.environ.get("SNOWFLAKE_PRIVATE_KEY_PATH")
+    if key_path:
+        kwargs["private_key"] = _load_private_key(key_path)
+    else:
+        kwargs["password"] = os.environ["SNOWFLAKE_PASSWORD"]
+    return snowflake.connector.connect(**kwargs)
 
 
 def get_vector_store() -> VectorStore:
@@ -95,3 +112,41 @@ def get_vector_store() -> VectorStore:
     if backend == "snowflake":
         return SnowflakeVectorStore(conn_factory=_default_snowflake_conn)
     return LocalVectorStore()
+
+
+class CortexEmbedder:
+    """Computes embeddings via Snowflake Cortex EMBED_TEXT_768 (in-database).
+
+    Exposes the same `.embed(text) -> list[float]` interface as GeminiClient, so it
+    can drive retrieval without an external embedding API. One connection is cached
+    and reused across calls (a document produces one embed per page)."""
+
+    def __init__(self, conn_factory: Callable[[], object], model: Optional[str] = None) -> None:
+        self._conn_factory = conn_factory
+        self._model = model or os.environ.get("CORTEX_EMBED_MODEL", "snowflake-arctic-embed-m-v1.5")
+        self._conn = None
+
+    def _cursor(self):
+        if self._conn is None:
+            self._conn = self._conn_factory()
+        return self._conn.cursor()
+
+    def embed(self, text: str) -> list[float]:
+        cur = self._cursor()
+        try:
+            cur.execute("SELECT SNOWFLAKE.CORTEX.EMBED_TEXT_768(%s, %s)", (self._model, text))
+            return list(cur.fetchone()[0])
+        finally:
+            cur.close()
+
+
+def get_embedder():
+    """Return the retrieval embedder for the active backend.
+
+    - snowflake: Cortex EMBED_TEXT_768 (in-DB, no external embedding key).
+    - local: Gemini embeddings (google-generativeai)."""
+    backend = os.environ.get("VECTOR_BACKEND", "local").lower()
+    if backend == "snowflake":
+        return CortexEmbedder(conn_factory=_default_snowflake_conn)
+    from app.gemini_client import GeminiClient
+    return GeminiClient.from_env()

@@ -1,3 +1,4 @@
+import os
 from app.models import AnalysisResult, AnalysisSummary, TopIssue, Severity
 from app.highlight import build_highlight
 from app.jobs import JobRegistry
@@ -7,21 +8,32 @@ from app.vector_store import VectorStore
 _RISK_ORDER = {Severity.illegal: 3, Severity.high: 2, Severity.medium: 1, Severity.favorable: 0}
 _RISK_LABEL = {3: "Critical", 2: "High", 1: "Medium", 0: "Low"}
 
+# Pages analyzed per LLM call. Grouping cuts request count (e.g. 16 pages / 4 = 4 calls
+# instead of 16) to stay under free-tier daily quotas; page markers keep highlights accurate.
+_PAGE_GROUP = max(1, int(os.environ.get("ANALYSIS_PAGE_GROUP", "4")))
+
 def analyze_document(file_id: str, pdf_path: str, redacted_pages: list[str],
-                     llm: LLMService, store: VectorStore, registry: JobRegistry,
+                     llm: LLMService, embedder, store: VectorStore, registry: JobRegistry,
                      top_k: int = 4) -> AnalysisResult:
     try:
         registry.update(file_id, status="processing", progress=20, message="Loading document...")
         pages = redacted_pages or [""]
+        groups = [pages[i:i + _PAGE_GROUP] for i in range(0, len(pages), _PAGE_GROUP)]
         drafts = []
-        for idx, page_text in enumerate(pages):
-            page_no = idx + 1
-            progress = 20 + int(60 * (idx + 1) / len(pages))
-            registry.update(file_id, progress=progress, message=f"Analyzing page {page_no}/{len(pages)}...")
-            if not page_text.strip():
+        for gi, group in enumerate(groups):
+            base = gi * _PAGE_GROUP
+            first, last = base + 1, base + len(group)
+            progress = 20 + int(60 * (gi + 1) / len(groups))
+            registry.update(file_id, progress=progress,
+                            message=f"Analyzing pages {first}-{last} of {len(pages)}...")
+            # Concatenate the group's pages with page markers so the LLM can attribute
+            # each finding to the correct page (keeps highlight coordinates accurate).
+            marked = "\n\n".join(f"=== PAGE {base + j + 1} ===\n{txt}"
+                                 for j, txt in enumerate(group) if txt.strip())
+            if not marked.strip():
                 continue
-            statutes = store.search(llm.embed(page_text), k=top_k)
-            drafts.extend(llm.analyze_chunk(page_text, statutes, page_hint=page_no))
+            statutes = store.search(embedder.embed(marked), k=top_k)
+            drafts.extend(llm.analyze_chunk(marked, statutes, page_hint=first))
 
         registry.update(file_id, progress=90, message="Extracting highlight positions...")
         highlights = [build_highlight(d, pdf_path, i) for i, d in enumerate(drafts)]

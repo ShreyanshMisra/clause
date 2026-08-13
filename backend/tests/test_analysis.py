@@ -22,7 +22,8 @@ def test_analyze_document_produces_result_and_progress():
     store.seed([Statute(id="a", chapter="186", section="15B", title="Deposits",
                         text="deposit", embedding=[1.0, 0.0, 0.0])])
     result = analyze_document("fid", FIX, redacted_pages=["chunk text"],
-                              llm=LLMService(FakeClient()), store=store, registry=registry)
+                              llm=LLMService(FakeClient()), embedder=FakeClient(),
+                              store=store, registry=registry)
     assert result.analysisSummary.issuesFound >= 1
     assert registry.get("fid").status == "completed"
     assert registry.get("fid").progress == 100
@@ -40,7 +41,8 @@ def test_analyze_document_handles_zero_findings():
     store.seed([Statute(id="a", chapter="186", section="15B", title="Deposits",
                         text="deposit", embedding=[1.0, 0.0, 0.0])])
     result = analyze_document("fid2", FIX, redacted_pages=["some text"],
-                              llm=LLMService(EmptyClient()), store=store, registry=registry)
+                              llm=LLMService(EmptyClient()), embedder=EmptyClient(),
+                              store=store, registry=registry)
     assert result.analysisSummary.issuesFound == 0
     assert result.analysisSummary.overallRisk == "Low"
     assert result.highlights == []
@@ -59,5 +61,6 @@ def test_analyze_document_marks_failed_on_error():
     store.seed([Statute(id="a", chapter="186", section="15B", title="D", text="d", embedding=[1.0, 0.0, 0.0])])
     with pytest.raises(RuntimeError):
         analyze_document("fid3", FIX, redacted_pages=["text"],
-                         llm=LLMService(BoomClient()), store=store, registry=registry)
+                         llm=LLMService(BoomClient()), embedder=BoomClient(),
+                         store=store, registry=registry)
     assert registry.get("fid3").status == "failed"

@@ -1,4 +1,10 @@
 import os, uuid
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Load backend/.env before any module reads env (VECTOR_BACKEND, GEMINI_API_KEY, etc.).
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+
 from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response
@@ -16,23 +22,28 @@ app.add_middleware(
     allow_credentials=True, allow_methods=["*"], allow_headers=["*"],
 )
 
-def _build_env_llm():
+def _build_services():
+    """Build the generation LLM (Gemini) and the retrieval embedder
+    (Cortex in snowflake mode, Gemini in local mode)."""
     from app.gemini_client import GeminiClient
     from app.llm_service import LLMService
-    return LLMService(GeminiClient.from_env())
+    from app.vector_store import get_embedder
+    llm = LLMService(GeminiClient.from_env())
+    embedder = get_embedder()
+    return llm, embedder
 
 @app.on_event("startup")
 def _init_llm():
     if state.llm is None:
         try:
-            state.llm = _build_env_llm()
+            state.llm, state.embedder = _build_services()
         except Exception as exc:
             import logging
-            logging.warning("LLM init failed at startup: %s — will retry on first request", exc)
+            logging.warning("Service init failed at startup: %s — will retry on first request", exc)
             return
     try:
         from app.bootstrap import seed_local_if_needed
-        seed_local_if_needed(state.vector_store, state.llm)
+        seed_local_if_needed(state.vector_store, state.embedder)
         state.seeded = True
     except Exception as exc:
         import logging
@@ -84,14 +95,14 @@ def extract_metadata(body: FileIdBody):
 
 def _run_analysis(file_id: str):
     if state.llm is None:
-        state.llm = _build_env_llm()
+        state.llm, state.embedder = _build_services()
     if not state.seeded:
         from app.bootstrap import seed_local_if_needed
-        seed_local_if_needed(state.vector_store, state.llm)
+        seed_local_if_needed(state.vector_store, state.embedder)
         state.seeded = True
     result = analyze_document(file_id, state.pdf_path(file_id),
                               state.redacted_pages.get(file_id, []),
-                              state.llm, state.vector_store, state.registry)
+                              state.llm, state.embedder, state.vector_store, state.registry)
     md = state.metadata_store.get(file_id)
     if md is not None:
         result.documentMetadata = md

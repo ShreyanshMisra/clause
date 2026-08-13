@@ -21,8 +21,14 @@ _META_PROMPT = (
 _ANALYZE_PROMPT = (
     "You are a Massachusetts tenant-rights attorney. Given a lease CHUNK and relevant STATUTES, "
     "return JSON {{\"findings\": [ ... ]}} where each finding has quoted_text (verbatim from the "
-    "chunk), page (integer), category, severity (one of illegal|high|medium|favorable), "
-    "statute_citation, explanation, damages_estimate (number or null). Only flag real issues. "
+    "chunk), page (integer — the CHUNK may span multiple pages delimited by lines like "
+    "'=== PAGE N ==='; set page to the PAGE number where this finding's quoted_text appears), "
+    "category, severity (one of illegal|high|medium|favorable), "
+    "statute_citation, explanation, and damages_estimate: your best estimate of the tenant's "
+    "potential dollar recovery for this violation under Massachusetts law (e.g. treble the "
+    "security deposit under c.186 s.15B, up to three months' rent for quiet-enjoyment or "
+    "retaliation violations), as a plain number with no symbols or commas. Only use null when a "
+    "violation genuinely has no monetary remedy. Only flag real issues. "
     "Default page to {page_hint}.\n\nSTATUTES:\n{statutes}\n\nCHUNK:\n{chunk}"
 )
 

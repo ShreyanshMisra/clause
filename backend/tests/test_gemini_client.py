@@ -5,7 +5,7 @@ class FakeResp:
 
 class FakeModel:
     def __init__(self, text): self._text = text
-    def generate_content(self, prompt): return FakeResp(self._text)
+    def generate_content(self, prompt, **kwargs): return FakeResp(self._text)
 
 def test_generate_json_parses_fenced_block():
     client = GeminiClient(model=FakeModel('```json\n{"a": 1}\n```'), embed_fn=lambda t: [0.0])
