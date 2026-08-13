@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { api, AnalysisResult } from "@/lib/api";
 import { ClauseCard } from "@/components/ClauseCard";
+import { DemandLetterModal } from "@/components/DemandLetterModal";
 
 // PdfHighlights touches the DOM (pdfjs + react-pdf-highlighter); disable SSR.
 const PdfHighlights = dynamic(
@@ -114,8 +115,7 @@ export default function Results() {
         </div>
       </div>
 
-      {/* Demand letter modal placeholder — implemented in the next task */}
-      {letterOpen && null}
+      {letterOpen && <DemandLetterModal fileId={id} onClose={() => setLetterOpen(false)} />}
     </main>
   );
 }
