@@ -9,3 +9,8 @@ venv/
 /tmp/
 .DS_Store
 old_reference/
+backend/.pytest_cache
+backend/pytest.ini
+docs/superpowers
+frontend/AGENTS.md
+frontend/CLAUDE.md
