@@ -1,0 +1,52 @@
+from pathlib import Path
+from fastapi.testclient import TestClient
+import app.state as state
+from app.main import app
+from app.vector_store import LocalVectorStore, Statute
+from app.llm_service import LLMService
+
+FIX = Path(__file__).parent / "fixtures" / "sample-lease.pdf"
+
+class FakeClient:
+    def embed(self, text): return [1.0, 0.0, 0.0]
+    def generate_json(self, prompt):
+        if "metadata" in prompt.lower():
+            return {"parties": {"landlord": "L", "tenant": "T", "property": "P"},
+                    "monthlyRent": "$1000", "leaseTerm": "12mo", "securityDeposit": "$1500"}
+        from app.pdf_service import extract_pages
+        word = extract_pages(str(FIX))[0].text.split()[0]
+        return {"findings": [{"quoted_text": word, "page": 1, "category": "Deposit",
+                              "severity": "illegal", "statute_citation": "c.186",
+                              "explanation": "e", "damages_estimate": 1500}]}
+
+def setup_module(module):
+    store = LocalVectorStore()
+    store.seed([Statute(id="a", chapter="186", section="15B", title="Deposits",
+                        text="deposit", embedding=[1.0, 0.0, 0.0])])
+    state.vector_store = store
+    state.llm = LLMService(FakeClient())
+
+def test_full_flow_upload_analyze_results():
+    with TestClient(app) as client:
+        with open(FIX, "rb") as f:
+            up = client.post("/upload", files={"file": ("sample-lease.pdf", f, "application/pdf")})
+        assert up.status_code == 200
+        fid = up.json()["file_id"]
+        assert "pii_redacted" in up.json()
+
+        an = client.post("/analyze", json={"file_id": fid})
+        assert an.status_code == 200
+
+        st = client.get(f"/status/{fid}")
+        assert st.status_code == 200 and st.json()["status"] in ("processing", "completed")
+
+        doc = client.get(f"/document/{fid}")
+        assert doc.status_code == 200
+        assert doc.json()["analysisSummary"]["issuesFound"] >= 1
+
+def test_pdf_endpoint_serves_bytes():
+    with TestClient(app) as client:
+        with open(FIX, "rb") as f:
+            fid = client.post("/upload", files={"file": ("s.pdf", f, "application/pdf")}).json()["file_id"]
+        r = client.get(f"/pdf/{fid}")
+        assert r.status_code == 200 and r.content[:4] == b"%PDF"
