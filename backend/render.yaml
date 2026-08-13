@@ -13,3 +13,5 @@ services:
         value: local
       - key: ALLOWED_ORIGINS
         sync: false
+        # REQUIRED: set to your Vercel URL, e.g. https://clause-yourapp.vercel.app
+        # Comma-separate multiple origins. Without this, the deployed frontend is CORS-blocked.

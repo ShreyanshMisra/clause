@@ -4,6 +4,7 @@ class FakeClient:
     def __init__(self, payload): self.payload = payload; self.calls = []
     def generate_json(self, prompt):
         self.calls.append(prompt); return self.payload
+    def generate_text(self, prompt): return "<p>letter body</p>"
     def embed(self, text): return [0.1, 0.2, 0.3]
 
 def test_extract_metadata_maps_fields():
@@ -26,3 +27,12 @@ def test_analyze_chunk_returns_finding_drafts():
 def test_embed_delegates_to_client():
     svc = LLMService(FakeClient({}))
     assert svc.embed("hi") == [0.1, 0.2, 0.3]
+
+def test_draft_demand_letter_returns_text():
+    from app.llm_service import FindingDraft
+    from app.models import Metadata
+    svc = LLMService(FakeClient({}))
+    draft = FindingDraft(quoted_text="q", page=1, category="Deposit", severity="illegal",
+                         statute_citation="c.186", explanation="e", damages_estimate=100)
+    html = svc.draft_demand_letter([draft], Metadata(), {"name": "T"}, {"name": "L"})
+    assert html == "<p>letter body</p>"

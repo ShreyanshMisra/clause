@@ -9,9 +9,11 @@ os.makedirs(TMP_DIR, exist_ok=True)
 registry = JobRegistry()
 vector_store = get_vector_store()
 llm: LLMService | None = None  # set on startup or by tests
+seeded: bool = False
 
 results: dict[str, object] = {}          # file_id -> AnalysisResult
 redacted_text: dict[str, str] = {}        # file_id -> redacted text
+redacted_pages: dict[str, list[str]] = {}  # file_id -> per-page redacted text
 metadata_store: dict[str, object] = {}    # file_id -> Metadata
 
 def pdf_path(file_id: str) -> str:

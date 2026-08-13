@@ -7,21 +7,21 @@ from app.vector_store import VectorStore
 _RISK_ORDER = {Severity.illegal: 3, Severity.high: 2, Severity.medium: 1, Severity.favorable: 0}
 _RISK_LABEL = {3: "Critical", 2: "High", 1: "Medium", 0: "Low"}
 
-def _chunk(text: str, size: int = 3000) -> list[str]:
-    return [text[i:i + size] for i in range(0, max(len(text), 1), size)] or [""]
-
-def analyze_document(file_id: str, pdf_path: str, redacted_text: str,
+def analyze_document(file_id: str, pdf_path: str, redacted_pages: list[str],
                      llm: LLMService, store: VectorStore, registry: JobRegistry,
                      top_k: int = 4) -> AnalysisResult:
     try:
         registry.update(file_id, status="processing", progress=20, message="Loading document...")
-        chunks = _chunk(redacted_text)
+        pages = redacted_pages or [""]
         drafts = []
-        for idx, chunk in enumerate(chunks):
-            progress = 20 + int(60 * (idx + 1) / len(chunks))
-            registry.update(file_id, progress=progress, message=f"Analyzing chunk {idx+1}/{len(chunks)}...")
-            statutes = store.search(llm.embed(chunk), k=top_k)
-            drafts.extend(llm.analyze_chunk(chunk, statutes, page_hint=1))
+        for idx, page_text in enumerate(pages):
+            page_no = idx + 1
+            progress = 20 + int(60 * (idx + 1) / len(pages))
+            registry.update(file_id, progress=progress, message=f"Analyzing page {page_no}/{len(pages)}...")
+            if not page_text.strip():
+                continue
+            statutes = store.search(llm.embed(page_text), k=top_k)
+            drafts.extend(llm.analyze_chunk(page_text, statutes, page_hint=page_no))
 
         registry.update(file_id, progress=90, message="Extracting highlight positions...")
         highlights = [build_highlight(d, pdf_path, i) for i, d in enumerate(drafts)]

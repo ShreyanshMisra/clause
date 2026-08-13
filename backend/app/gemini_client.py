@@ -30,3 +30,6 @@ class GeminiClient:
             return parsed if isinstance(parsed, dict) else {"findings": parsed}
         except json.JSONDecodeError:
             return {}
+
+    def generate_text(self, prompt: str) -> str:
+        return self._model.generate_content(prompt).text or ""
