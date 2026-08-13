@@ -50,3 +50,13 @@ def test_pdf_endpoint_serves_bytes():
             fid = client.post("/upload", files={"file": ("s.pdf", f, "application/pdf")}).json()["file_id"]
         r = client.get(f"/pdf/{fid}")
         assert r.status_code == 200 and r.content[:4] == b"%PDF"
+
+def test_upload_rejects_non_pdf():
+    with TestClient(app) as client:
+        r = client.post("/upload", files={"file": ("doc.txt", b"hello", "text/plain")})
+        assert r.status_code == 400
+
+def test_status_unknown_id_returns_404():
+    with TestClient(app) as client:
+        r = client.get("/status/doesnotexist")
+        assert r.status_code == 404

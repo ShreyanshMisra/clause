@@ -32,16 +32,18 @@ def health():
 
 @app.post("/upload")
 async def upload(file: UploadFile = File(...)):
-    if not file.filename.lower().endswith(".pdf"):
+    if not (file.filename or "").lower().endswith(".pdf"):
         raise HTTPException(400, "Only PDF files are accepted")
     data = await file.read()
     if len(data) > 10 * 1024 * 1024:
         raise HTTPException(400, "File exceeds 10MB")
     file_id = uuid.uuid4().hex
-    with open(state.pdf_path(file_id), "wb") as f:
+    path = state.pdf_path(file_id)
+    with open(path, "wb") as f:
         f.write(data)
-    pages = extract_pages(state.pdf_path(file_id))
+    pages = extract_pages(path)
     if len(pages) > 20:
+        os.unlink(path)
         raise HTTPException(400, "Document exceeds 20 pages for this demo")
     full_text = "\n".join(p.text for p in pages)
     red = redact(full_text)
