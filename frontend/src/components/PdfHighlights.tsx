@@ -14,8 +14,7 @@ import { HIGHLIGHT_HEX } from "@/app/theme";
 
 // The worker URL must match the pdfjs-dist version that react-pdf-highlighter
 // bundles internally (4.4.168). Using unpkg mirrors the old reference pattern.
-const WORKER_SRC =
-  "https://unpkg.com/pdfjs-dist@4.4.168/build/pdf.worker.min.mjs";
+const WORKER_SRC = "/pdf.worker.min.mjs";
 
 interface Props {
   url: string;
