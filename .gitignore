@@ -14,3 +14,10 @@ backend/pytest.ini
 docs/superpowers
 frontend/AGENTS.md
 frontend/CLAUDE.md
+.playwright-mcp
+frontend/DEPLOY.md
+backend/SNOWFLAKE.md
+# Snowflake key-pair auth (secrets)
+backend/rsa_key.p8
+backend/rsa_key.pub
+*.p8

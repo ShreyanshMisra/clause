@@ -26,6 +26,8 @@ def setup_module(module):
                         text="deposit", embedding=[1.0, 0.0, 0.0])])
     state.vector_store = store
     state.llm = LLMService(FakeClient())
+    state.embedder = FakeClient()
+    state.seeded = True
 
 def test_full_flow_upload_analyze_results():
     with TestClient(app) as client:

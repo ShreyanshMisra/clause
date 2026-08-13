@@ -8,7 +8,8 @@ os.makedirs(TMP_DIR, exist_ok=True)
 
 registry = JobRegistry()
 vector_store = get_vector_store()
-llm: LLMService | None = None  # set on startup or by tests
+llm: LLMService | None = None  # generation LLM (Gemini); set on startup or by tests
+embedder = None                 # retrieval embedder (Cortex in snowflake mode, Gemini in local)
 seeded: bool = False
 
 results: dict[str, object] = {}          # file_id -> AnalysisResult
