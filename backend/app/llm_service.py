@@ -71,5 +71,4 @@ class LLMService:
             "requesting remedy within 30 days.\n\n"
             f"SENDER: {sender}\nRECIPIENT: {recipient}\nISSUES:\n{issues}"
         )
-        data = self._client.generate_json(prompt)
-        return data.get("html", "") if isinstance(data, dict) else str(data)
+        return self._client.generate_text(prompt)

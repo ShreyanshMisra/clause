@@ -18,6 +18,7 @@ class FakeClient:
         return {"findings": [{"quoted_text": word, "page": 1, "category": "Deposit",
                               "severity": "illegal", "statute_citation": "c.186",
                               "explanation": "e", "damages_estimate": 1500}]}
+    def generate_text(self, prompt): return "<p>Dear Landlord</p>"
 
 def setup_module(module):
     store = LocalVectorStore()
@@ -60,3 +61,13 @@ def test_status_unknown_id_returns_404():
     with TestClient(app) as client:
         r = client.get("/status/doesnotexist")
         assert r.status_code == 404
+
+def test_demand_letter_returns_pdf():
+    with TestClient(app) as client:
+        with open(FIX, "rb") as f:
+            fid = client.post("/upload", files={"file": ("s.pdf", f, "application/pdf")}).json()["file_id"]
+        client.post("/analyze", json={"file_id": fid})
+        client.get(f"/status/{fid}")  # flush
+        r = client.post("/demand-letter", json={"file_id": fid, "sender": {"name": "T"}, "recipient": {"name": "L"}})
+        assert r.status_code == 200
+        assert r.content[:4] == b"%PDF"

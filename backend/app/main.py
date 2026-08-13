@@ -24,9 +24,19 @@ def _build_env_llm():
 @app.on_event("startup")
 def _init_llm():
     if state.llm is None:
-        state.llm = _build_env_llm()
-    from app.bootstrap import seed_local_if_needed
-    seed_local_if_needed(state.vector_store, state.llm)
+        try:
+            state.llm = _build_env_llm()
+        except Exception as exc:
+            import logging
+            logging.warning("LLM init failed at startup: %s — will retry on first request", exc)
+            return
+    try:
+        from app.bootstrap import seed_local_if_needed
+        seed_local_if_needed(state.vector_store, state.llm)
+        state.seeded = True
+    except Exception as exc:
+        import logging
+        logging.warning("Statute seeding failed at startup: %s — will retry on first analysis", exc)
 
 @app.get("/health")
 def health():
@@ -47,13 +57,17 @@ async def upload(file: UploadFile = File(...)):
     if len(pages) > 20:
         os.unlink(path)
         raise HTTPException(400, "Document exceeds 20 pages for this demo")
-    full_text = "\n".join(p.text for p in pages)
-    red = redact(full_text)
-    state.redacted_text[file_id] = red.redacted_text
+    page_redactions = [redact(p.text) for p in pages]
+    state.redacted_pages[file_id] = [r.redacted_text for r in page_redactions]
+    state.redacted_text[file_id] = "\n".join(r.redacted_text for r in page_redactions)
+    summary: dict[str, int] = {}
+    for r in page_redactions:
+        for k, v in r.summary.items():
+            summary[k] = summary.get(k, 0) + v
     state.registry.create(file_id, filename=file.filename)
     return {"file_id": file_id, "filename": file.filename, "size": len(data),
-            "pii_redacted": red.summary,
-            "message": f"Protected {sum(red.summary.values())} pieces of personal information"}
+            "pii_redacted": summary,
+            "message": f"Protected {sum(summary.values())} pieces of personal information"}
 
 class FileIdBody(BaseModel):
     file_id: str
@@ -69,8 +83,14 @@ def extract_metadata(body: FileIdBody):
     return {"file_id": body.file_id, "status": "metadata_extracted", "metadata": md.model_dump()}
 
 def _run_analysis(file_id: str):
+    if state.llm is None:
+        state.llm = _build_env_llm()
+    if not state.seeded:
+        from app.bootstrap import seed_local_if_needed
+        seed_local_if_needed(state.vector_store, state.llm)
+        state.seeded = True
     result = analyze_document(file_id, state.pdf_path(file_id),
-                              state.redacted_text.get(file_id, ""),
+                              state.redacted_pages.get(file_id, []),
                               state.llm, state.vector_store, state.registry)
     md = state.metadata_store.get(file_id)
     if md is not None:
