@@ -45,117 +45,188 @@ export default function Home() {
 
       {/* ── Hero ───────────────────────────────────────────────────────── */}
       <div className="mb-10 flex flex-col items-center text-center">
-        {/* Wordmark pill */}
+
+        {/* Wordmark pill — stagger 0 */}
         <div
-          className="mb-6 inline-flex items-center gap-2 rounded-full px-4 py-1.5"
+          className="enter-0 mb-6 inline-flex items-center gap-2 rounded-full px-4 py-1.5"
           style={{
-            background: "rgba(217,119,87,0.10)",
+            background: "rgba(217,119,87,0.09)",
             border: "1px solid rgba(217,119,87,0.22)",
+            animation: "slideUp 0.6s cubic-bezier(.16,1,.3,1) 0ms both, pillGlow 3.5s ease-in-out 1.2s infinite",
           }}
         >
-          {/* Shield icon */}
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
+          <svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden>
             <path
               d="M7 1L2 3.5v4c0 2.5 2.2 4.7 5 5 2.8-.3 5-2.5 5-5v-4L7 1z"
               fill="var(--accent)"
-              opacity="0.85"
+              opacity="0.9"
             />
           </svg>
           <span
-            className="text-xs font-semibold tracking-widest uppercase"
-            style={{ color: "var(--accent-deep)" }}
+            className="text-xs font-semibold uppercase"
+            style={{ color: "var(--accent-deep)", letterSpacing: "0.12em" }}
           >
             Clause
           </span>
         </div>
 
+        {/* Headline — stagger 1 */}
         <h1
-          className="mb-3 text-5xl font-semibold tracking-tight"
-          style={{ color: "var(--ink)", letterSpacing: "-0.03em", lineHeight: 1.1 }}
+          className="enter-1 mb-4"
+          style={{
+            fontSize: "clamp(2.6rem, 6vw, 3.5rem)",
+            fontWeight: 650,
+            letterSpacing: "-0.04em",
+            lineHeight: 1.05,
+            color: "var(--ink)",
+          }}
         >
-          Know what you&rsquo;re<br />
-          <span style={{ color: "var(--accent)" }}>signing.</span>
+          Know what you&rsquo;re
+          <br />
+          {/* Accent word with animated underline */}
+          <span
+            style={{
+              color: "var(--accent)",
+              position: "relative",
+              display: "inline-block",
+            }}
+          >
+            signing.
+            <span
+              aria-hidden
+              style={{
+                position: "absolute",
+                bottom: "-3px",
+                left: 0,
+                height: "2.5px",
+                borderRadius: "2px",
+                background: "linear-gradient(90deg, var(--accent), var(--accent-deep))",
+                animation: "underlineGrow 0.7s cubic-bezier(.16,1,.3,1) 0.55s both",
+              }}
+            />
+          </span>
         </h1>
 
+        {/* Sub-copy — stagger 2 */}
         <p
-          className="max-w-sm text-base leading-relaxed"
-          style={{ color: "var(--ink-muted)" }}
+          className="enter-2 max-w-xs text-base font-medium leading-relaxed"
+          style={{ color: "var(--ink-muted)", letterSpacing: "-0.005em" }}
         >
-          Spot illegal and risky clauses in your rental agreement — in seconds,
-          not hours.
+          Spot illegal and risky clauses in your rental agreement&nbsp;—
+          in seconds, not hours.
         </p>
       </div>
 
-      {/* ── Upload card ────────────────────────────────────────────────── */}
-      <div className="w-full">
+      {/* ── Upload card — stagger 3 ─────────────────────────────────────── */}
+      <div className="enter-3 w-full">
         <UploadCard />
       </div>
 
-      {/* ── PII trust note ─────────────────────────────────────────────── */}
+      {/* ── PII trust note — stagger 4 ─────────────────────────────────── */}
       <div
-        className="mt-5 flex items-center gap-2"
-        style={{ color: "var(--ink-subtle)" }}
+        className="enter-4 mt-5 flex items-center gap-2"
       >
-        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden>
-          <path
-            d="M6.5 1L1.5 3.25v3.5c0 2.6 2 4.7 5 5 3-0.3 5-2.4 5-5v-3.5L6.5 1z"
-            stroke="var(--sev-favorable)"
-            strokeWidth="1.3"
-            strokeLinejoin="round"
+        {/* Animated status dot */}
+        <span
+          aria-hidden
+          style={{
+            position: "relative",
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: "10px",
+            height: "10px",
+          }}
+        >
+          {/* Pulse ring */}
+          <span
+            style={{
+              position: "absolute",
+              inset: 0,
+              borderRadius: "50%",
+              background: "var(--sev-favorable)",
+              animation: "statusPulse 2.4s ease-in-out infinite",
+            }}
           />
-          <path
-            d="M4.5 6.5l1.5 1.5 2.5-2.5"
-            stroke="var(--sev-favorable)"
-            strokeWidth="1.3"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+          {/* Core dot */}
+          <span
+            style={{
+              position: "relative",
+              width: "5px",
+              height: "5px",
+              borderRadius: "50%",
+              background: "var(--sev-favorable)",
+              flexShrink: 0,
+            }}
           />
-        </svg>
-        <span className="text-xs" style={{ color: "var(--ink-subtle)" }}>
+        </span>
+        <span className="text-xs" style={{ color: "var(--ink-subtle)", letterSpacing: "0.01em" }}>
           Personal information is redacted before analysis — never stored.
         </span>
       </div>
 
-      {/* ── How it works ───────────────────────────────────────────────── */}
-      <div className="mt-14 w-full">
+      {/* ── How it works — stagger 5 ───────────────────────────────────── */}
+      <div className="enter-5 mt-14 w-full">
         <p
-          className="mb-6 text-center text-xs font-semibold uppercase tracking-widest"
-          style={{ color: "var(--ink-subtle)" }}
+          className="mb-6 text-center text-[10px] font-bold uppercase tracking-[0.16em]"
+          style={{ color: "var(--ink-subtle)", opacity: 0.7 }}
         >
           How it works
         </p>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-3 gap-3">
           {STEPS.map((step) => (
             <div
               key={step.n}
-              className="flex flex-col gap-3 rounded-2xl p-5"
+              className="step-card relative flex flex-col gap-3 overflow-hidden rounded-2xl p-5"
               style={{
-                background: "rgba(240,238,230,0.55)",
-                border: "1px solid rgba(107,107,99,0.12)",
+                background: "rgba(240,238,230,0.5)",
+                border: "1px solid rgba(107,107,99,0.11)",
+                backdropFilter: "blur(8px)",
+                WebkitBackdropFilter: "blur(8px)",
               }}
             >
-              <div className="flex items-center gap-2">
-                <div
-                  className="flex h-8 w-8 items-center justify-center rounded-xl"
-                  style={{ background: "rgba(217,119,87,0.10)" }}
-                >
-                  {step.icon}
-                </div>
-                <span
-                  className="text-[10px] font-bold tracking-widest"
-                  style={{ color: "var(--ink-subtle)", opacity: 0.6 }}
-                >
-                  {step.n}
-                </span>
+              {/* Ghost step number — editorial depth layer */}
+              <span
+                aria-hidden
+                style={{
+                  position: "absolute",
+                  top: "-8px",
+                  right: "8px",
+                  fontSize: "64px",
+                  fontWeight: 800,
+                  letterSpacing: "-0.04em",
+                  color: "var(--ink)",
+                  opacity: 0.04,
+                  lineHeight: 1,
+                  userSelect: "none",
+                  pointerEvents: "none",
+                }}
+              >
+                {step.n}
+              </span>
+
+              {/* Icon chip */}
+              <div
+                className="flex h-8 w-8 items-center justify-center rounded-xl"
+                style={{
+                  background: "rgba(217,119,87,0.10)",
+                  border: "1px solid rgba(217,119,87,0.14)",
+                }}
+              >
+                {step.icon}
               </div>
+
+              {/* Label */}
               <p
                 className="text-sm font-semibold"
-                style={{ color: "var(--ink)", letterSpacing: "-0.01em" }}
+                style={{ color: "var(--ink)", letterSpacing: "-0.02em" }}
               >
                 {step.label}
               </p>
+
+              {/* Body */}
               <p
-                className="text-xs leading-relaxed"
+                className="text-[11px] leading-[1.6]"
                 style={{ color: "var(--ink-muted)" }}
               >
                 {step.body}

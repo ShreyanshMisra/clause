@@ -66,3 +66,57 @@ body {
   60%       { transform: translate(-1%, 3%); }
   80%       { transform: translate(3%, 1%); }
 }
+
+/* ── Page entry stagger ─────────────────────────────────────────────────── */
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── Underline trace animation for hero accent word ────────────────────── */
+@keyframes underlineGrow {
+  from { width: 0; opacity: 0; }
+  to   { width: 100%; opacity: 1; }
+}
+
+/* ── Pulsing status dot (trust note) ───────────────────────────────────── */
+@keyframes statusPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50%       { transform: scale(1.5); opacity: 0.4; }
+}
+
+/* ── Idle halo on upload icon ───────────────────────────────────────────── */
+@keyframes haloBreath {
+  0%, 100% { transform: scale(1); opacity: 0.18; }
+  50%       { transform: scale(1.22); opacity: 0.06; }
+}
+
+/* ── Step cards hover lift ──────────────────────────────────────────────── */
+.step-card {
+  transition: transform 0.22s cubic-bezier(.34,1.56,.64,1), box-shadow 0.22s ease;
+}
+.step-card:hover {
+  transform: translateY(-3px);
+  box-shadow:
+    0 12px 36px rgba(217,119,87,0.10),
+    0 2px 8px rgba(20,20,19,0.07);
+}
+
+/* ── Hero pill shimmer ──────────────────────────────────────────────────── */
+@keyframes pillGlow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(217,119,87,0); }
+  50%       { box-shadow: 0 0 12px 2px rgba(217,119,87,0.14); }
+}
+
+/* ── Page stagger helpers ───────────────────────────────────────────────── */
+.enter-0  { animation: slideUp 0.6s cubic-bezier(.16,1,.3,1) 0ms   both; }
+.enter-1  { animation: slideUp 0.6s cubic-bezier(.16,1,.3,1) 80ms  both; }
+.enter-2  { animation: slideUp 0.6s cubic-bezier(.16,1,.3,1) 160ms both; }
+.enter-3  { animation: slideUp 0.6s cubic-bezier(.16,1,.3,1) 240ms both; }
+.enter-4  { animation: slideUp 0.6s cubic-bezier(.16,1,.3,1) 360ms both; }
+.enter-5  { animation: slideUp 0.6s cubic-bezier(.16,1,.3,1) 480ms both; }
