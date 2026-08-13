@@ -17,4 +17,5 @@ class JobRegistry:
             self._jobs[file_id] = job.model_copy(update=fields)
 
     def get(self, file_id: str) -> JobStatus | None:
-        return self._jobs.get(file_id)
+        with self._lock:
+            return self._jobs.get(file_id)
