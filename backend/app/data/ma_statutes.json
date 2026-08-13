@@ -1,0 +1,18 @@
+[
+  {"id": "186-15B", "chapter": "186", "section": "15B", "title": "Security deposits",
+   "text": "A landlord may not require a security deposit greater than one month's rent, must hold it in a separate interest-bearing account, provide a receipt and a statement of condition, and return it with interest within 30 days after tenancy ends. Failure can entitle the tenant to treble damages."},
+  {"id": "186-15", "chapter": "186", "section": "15", "title": "Waiver of rights void",
+   "text": "Any provision in a lease whereby a tenant waives statutory rights, such as habitability or the right to a jury trial, is against public policy and void."},
+  {"id": "186-14", "chapter": "186", "section": "14", "title": "Quiet enjoyment; utilities",
+   "text": "A landlord who directly or indirectly interferes with a tenant's quiet enjoyment, or shuts off utilities, is liable for actual and consequential damages or three months' rent, plus costs and attorney fees."},
+  {"id": "239-8A", "chapter": "239", "section": "8A", "title": "Repairs; rent withholding",
+   "text": "A tenant may withhold rent or raise defenses for a landlord's breach of the warranty of habitability or failure to maintain the premises in compliance with the sanitary code."},
+  {"id": "186-18", "chapter": "186", "section": "18", "title": "Reprisal for reporting",
+   "text": "Retaliation against a tenant for reporting code violations or exercising legal rights within six months is presumed unlawful and creates liability for damages of one to three months' rent."},
+  {"id": "111-127L", "chapter": "111", "section": "127L", "title": "Right to repair and deduct",
+   "text": "Where a landlord fails to remedy a serious sanitary code violation after notice, the tenant may repair and deduct up to four months' rent."},
+  {"id": "186-11", "chapter": "186", "section": "11", "title": "Notice to quit for nonpayment",
+   "text": "A tenancy at will may only be terminated for nonpayment after proper 14-day written notice to quit; self-help eviction and lockouts are prohibited."},
+  {"id": "186-12", "chapter": "186", "section": "12", "title": "Notice to terminate tenancy at will",
+   "text": "Termination of a tenancy at will requires written notice equal to the interval between rent days or 30 days, whichever is longer."}
+]
