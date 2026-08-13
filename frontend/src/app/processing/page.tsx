@@ -545,6 +545,30 @@ function Processing() {
             </div>
           </div>
 
+          {/* Start over — only on failure so the user is never stranded */}
+          {failed && (
+            <button
+              type="button"
+              onClick={() => router.push("/")}
+              style={{
+                borderRadius: "100px",
+                background: "var(--accent)",
+                color: "#fff",
+                border: "none",
+                cursor: "pointer",
+                padding: "10px 24px",
+                fontSize: "14px",
+                fontWeight: 600,
+                boxShadow: "0 2px 10px rgba(217,119,87,0.28)",
+                transition: "background 0.15s ease",
+              }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--accent-deep)"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--accent)"; }}
+            >
+              Start over
+            </button>
+          )}
+
           {/* Divider */}
           <div
             aria-hidden

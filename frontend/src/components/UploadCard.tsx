@@ -451,13 +451,15 @@ export function UploadCard() {
             </div>
 
             {/* CTA button */}
-            <label
-              htmlFor="clause-file-input"
+            <button
+              type="button"
+              onClick={() => inputRef.current?.click()}
               style={{
                 display: "inline-flex",
                 alignItems: "center",
                 gap: "7px",
                 cursor: "pointer",
+                border: "none",
                 borderRadius: "100px",
                 background: "var(--accent)",
                 color: "#fff",
@@ -502,19 +504,20 @@ export function UploadCard() {
                 <text x="4.5" y="11" fontSize="3.8" fontWeight="700" fill="white" letterSpacing="0.3">PDF</text>
               </svg>
               Choose a PDF file
-              <input
-                id="clause-file-input"
-                ref={inputRef}
-                type="file"
-                accept="application/pdf"
-                hidden
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) handle(f);
-                  e.target.value = "";
-                }}
-              />
-            </label>
+            </button>
+            {/* Hidden file input triggered via ref — kept a sibling of the button
+                to avoid the label+for+nested-input double-activation quirk. */}
+            <input
+              ref={inputRef}
+              type="file"
+              accept="application/pdf"
+              hidden
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) handle(f);
+                e.target.value = "";
+              }}
+            />
 
             {/* Constraint note */}
             <p
