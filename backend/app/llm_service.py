@@ -19,18 +19,41 @@ _META_PROMPT = (
 )
 
 _ANALYZE_PROMPT = (
-    "You are a Massachusetts tenant-rights attorney. Given a lease CHUNK and relevant STATUTES, "
-    "return JSON {{\"findings\": [ ... ]}} where each finding has quoted_text (verbatim from the "
-    "chunk), page (integer — the CHUNK may span multiple pages delimited by lines like "
-    "'=== PAGE N ==='; set page to the PAGE number where this finding's quoted_text appears), "
+    "You are a Massachusetts tenant-rights attorney reviewing a residential lease. You are given a "
+    "lease CHUNK and a list of candidate STATUTES, each prefixed with an [id]. "
+    "Flag a clause ONLY if it is directly supported by one of the provided STATUTES. Do NOT use "
+    "outside knowledge and do NOT invent citations; if no provided statute supports a concern, do "
+    "not flag it. Return JSON {{\"findings\": [ ... ]}} where each finding has: "
+    "quoted_text (verbatim from the chunk), "
+    "page (integer — the CHUNK may span multiple pages delimited by lines like '=== PAGE N ==='; "
+    "set page to where quoted_text appears), "
     "category, severity (one of illegal|high|medium|favorable), "
-    "statute_citation, explanation, and damages_estimate: your best estimate of the tenant's "
-    "potential dollar recovery for this violation under Massachusetts law (e.g. treble the "
-    "security deposit under c.186 s.15B, up to three months' rent for quiet-enjoyment or "
-    "retaliation violations), as a plain number with no symbols or commas. Only use null when a "
-    "violation genuinely has no monetary remedy. Only flag real issues. "
+    "statute_id (the exact [id] of the single supporting statute from the list above), "
+    "explanation (name the statute and explain the violation in plain English), and "
+    "damages_estimate: your best estimate of the tenant's potential dollar recovery under "
+    "Massachusetts law (e.g. treble the security deposit under 186-15B, up to three months' rent "
+    "for quiet-enjoyment or retaliation), as a plain number with no symbols or commas; use null "
+    "only when there is no monetary remedy. "
     "Default page to {page_hint}.\n\nSTATUTES:\n{statutes}\n\nCHUNK:\n{chunk}"
 )
+
+
+def _match_statute(cite: str, statutes: list[Statute]) -> Optional[Statute]:
+    """Map a model-supplied statute reference to one of the retrieved statutes.
+
+    Grounding guard: prefers an exact id match, then a chapter+section match. Returns
+    None when the reference doesn't correspond to any retrieved statute (so the finding
+    can be dropped as ungrounded)."""
+    c = (cite or "").lower().replace(" ", "")
+    if not c:
+        return None
+    for s in statutes:
+        if s.id.lower() in c:
+            return s
+    for s in statutes:
+        if s.chapter.lower() in c and s.section.lower() in c:
+            return s
+    return None
 
 class LLMService:
     def __init__(self, client) -> None:
@@ -51,17 +74,26 @@ class LLMService:
         )
 
     def analyze_chunk(self, chunk: str, statutes: list[Statute], page_hint: int = 1) -> list[FindingDraft]:
-        statute_text = "\n".join(f"- {s.chapter} s.{s.section} {s.title}: {s.text}" for s in statutes)
+        statute_text = "\n".join(
+            f"- [{s.id}] c.{s.chapter} s.{s.section} {s.title}: {s.text}" for s in statutes)
         data = self._client.generate_json(
             _ANALYZE_PROMPT.format(statutes=statute_text, chunk=chunk, page_hint=page_hint))
+        by_id = {s.id: s for s in statutes}
         out = []
         for f in data.get("findings", []):
+            # Grounding: the finding must reference a retrieved statute, else it's dropped as
+            # ungrounded (anti-hallucination). The citation is canonicalized from OUR corpus,
+            # not the model, so it is always accurate.
+            ref = f.get("statute_id") or f.get("statute_citation") or ""
+            st = by_id.get(ref.strip()) or _match_statute(ref, statutes)
+            if st is None:
+                continue
             out.append(FindingDraft(
                 quoted_text=f.get("quoted_text", ""),
                 page=int(f.get("page", page_hint) or page_hint),
                 category=f.get("category", "General"),
                 severity=f.get("severity", "medium"),
-                statute_citation=f.get("statute_citation"),
+                statute_citation=f"M.G.L. c.{st.chapter} § {st.section}",
                 explanation=f.get("explanation", ""),
                 damages_estimate=f.get("damages_estimate"),
             ))

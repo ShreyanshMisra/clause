@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
+import { ChurningLoader } from "@/components/ChurningLoader";
 
 /* ─── Keyframes injected once into <head> ────────────────────────────────── */
 const KEYFRAMES = `
@@ -71,149 +72,6 @@ const SUB_MESSAGES = [
   "Reviewing notice and termination provisions…",
   "Almost there — compiling your report…",
 ];
-
-/* ─── Orbital scanning animation ────────────────────────────────────────── */
-function ScanOrb({ failed }: { failed: boolean }) {
-  const r1 = 38; // inner orbit radius
-  const r2 = 48; // outer orbit radius
-  const size = 120;
-  const cx = size / 2;
-
-  if (failed) {
-    return (
-      <div
-        style={{
-          width: size,
-          height: size,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          animation: "failShake 0.5s ease",
-        }}
-      >
-        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden>
-          {/* Soft red glow circle */}
-          <circle cx={cx} cy={cx} r="40" fill="rgba(229,72,77,0.07)" />
-          <circle
-            cx={cx} cy={cx} r="36"
-            fill="none"
-            stroke="rgba(229,72,77,0.20)"
-            strokeWidth="1.5"
-          />
-          {/* X mark */}
-          <path
-            d={`M${cx - 14} ${cx - 14}L${cx + 14} ${cx + 14}M${cx + 14} ${cx - 14}L${cx - 14} ${cx + 14}`}
-            stroke="var(--sev-illegal)"
-            strokeWidth="3"
-            strokeLinecap="round"
-          />
-        </svg>
-      </div>
-    );
-  }
-
-  return (
-    <div style={{ position: "relative", width: size, height: size }}>
-      {/* Outer rotating ring with gap */}
-      <svg
-        width={size} height={size}
-        viewBox={`0 0 ${size} ${size}`}
-        aria-hidden
-        style={{
-          position: "absolute",
-          inset: 0,
-          animation: "orbitSpin 3.6s linear infinite",
-          transformOrigin: `${cx}px ${cx}px`,
-        }}
-      >
-        <circle
-          cx={cx} cy={cx} r={r2}
-          fill="none"
-          stroke="rgba(217,119,87,0.12)"
-          strokeWidth="1.5"
-        />
-        <circle
-          cx={cx} cy={cx} r={r2}
-          fill="none"
-          stroke="var(--accent)"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeDasharray={`${2 * Math.PI * r2 * 0.22} ${2 * Math.PI * r2 * 0.78}`}
-          opacity="0.75"
-        />
-      </svg>
-
-      {/* Inner rotating ring — reverse */}
-      <svg
-        width={size} height={size}
-        viewBox={`0 0 ${size} ${size}`}
-        aria-hidden
-        style={{
-          position: "absolute",
-          inset: 0,
-          animation: "orbitSpinReverse 2.4s linear infinite",
-          transformOrigin: `${cx}px ${cx}px`,
-        }}
-      >
-        <circle
-          cx={cx} cy={cx} r={r1}
-          fill="none"
-          stroke="rgba(217,119,87,0.08)"
-          strokeWidth="1.5"
-        />
-        <circle
-          cx={cx} cy={cx} r={r1}
-          fill="none"
-          stroke="var(--accent-deep)"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-          strokeDasharray={`${2 * Math.PI * r1 * 0.35} ${2 * Math.PI * r1 * 0.65}`}
-          opacity="0.55"
-        />
-      </svg>
-
-      {/* Centre document icon — pulsing */}
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        {/* Soft glow behind icon */}
-        <div
-          aria-hidden
-          style={{
-            position: "absolute",
-            width: "52px",
-            height: "52px",
-            borderRadius: "50%",
-            background: "radial-gradient(circle, rgba(217,119,87,0.28) 0%, transparent 72%)",
-            animation: "scanPulse 2.2s ease-in-out infinite",
-          }}
-        />
-        {/* Document icon */}
-        <svg
-          width="28" height="34" viewBox="0 0 28 34"
-          fill="none" aria-hidden
-          style={{ position: "relative", animation: "scanPulse 2.2s ease-in-out 0.4s infinite" }}
-        >
-          <rect x="0" y="0" width="28" height="34" rx="5" fill="rgba(217,119,87,0.12)" />
-          <rect x="0" y="0" width="28" height="1" rx="0.5" fill="rgba(255,255,255,0.6)" />
-          {/* Text lines */}
-          <rect x="5" y="8"  width="18" height="2.5" rx="1.25" fill="var(--accent)"       opacity="0.5" />
-          <rect x="5" y="14" width="14" height="2"   rx="1"    fill="var(--ink-subtle)"   opacity="0.3" />
-          <rect x="5" y="19" width="16" height="2"   rx="1"    fill="var(--sev-illegal)"  opacity="0.6" />
-          <rect x="5" y="24" width="10" height="2"   rx="1"    fill="var(--ink-subtle)"   opacity="0.2" />
-          {/* Flag tab */}
-          <rect x="22" y="17" width="6" height="5" rx="1" fill="var(--sev-illegal)" opacity="0.7" />
-        </svg>
-      </div>
-    </div>
-  );
-}
 
 /* ─── Progress bar with traveling sheen ─────────────────────────────────── */
 function ProgressBar({ progress, failed }: { progress: number; failed: boolean }) {
@@ -363,16 +221,19 @@ function Processing() {
 
   /* Read PII count from sessionStorage once */
   useEffect(() => {
-    try {
-      const raw = sessionStorage.getItem("pii");
-      if (raw) {
-        const obj: Record<string, number> = JSON.parse(raw);
-        const total = Object.values(obj).reduce((s, n) => s + n, 0);
-        if (total > 0) setPiiCount(total);
+    const readPii = () => {
+      try {
+        const raw = sessionStorage.getItem("pii");
+        if (raw) {
+          const obj: Record<string, number> = JSON.parse(raw);
+          const total = Object.values(obj).reduce((s, n) => s + n, 0);
+          if (total > 0) setPiiCount(total);
+        }
+      } catch {
+        /* ignore */
       }
-    } catch {
-      /* ignore */
-    }
+    };
+    readPii();
   }, []);
 
   /* Inject keyframes once */
@@ -483,8 +344,8 @@ function Processing() {
         {/* ── Content ─────────────────────────────────────────────────── */}
         <div className="flex flex-col items-center gap-8">
 
-          {/* Orbital scanner */}
-          <ScanOrb failed={failed} />
+          {/* Churning pixel-grid loader */}
+          <ChurningLoader failed={failed} />
 
           {/* Text block */}
           <div className="flex w-full flex-col items-center gap-2 text-center">

@@ -2,6 +2,7 @@ import os, tempfile
 from app.jobs import JobRegistry
 from app.vector_store import get_vector_store
 from app.llm_service import LLMService
+import app.db as db
 
 TMP_DIR = os.path.join(tempfile.gettempdir(), "clause")
 os.makedirs(TMP_DIR, exist_ok=True)
@@ -18,4 +19,6 @@ redacted_pages: dict[str, list[str]] = {}  # file_id -> per-page redacted text
 metadata_store: dict[str, object] = {}    # file_id -> Metadata
 
 def pdf_path(file_id: str) -> str:
-    return os.path.join(TMP_DIR, f"{file_id}.pdf")
+    """Persistent location for an uploaded PDF (survives restarts so
+    dashboard cases can be re-opened)."""
+    return db.upload_path(file_id)

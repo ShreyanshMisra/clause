@@ -28,13 +28,33 @@ export interface AnalysisResult {
   highlights: Finding[];
 }
 
+export interface CaseSummary {
+  id: string; filename: string; created_at: number; status: string;
+  overall_risk: string | null; issues_found: number | null;
+  estimated_recovery: string | null;
+}
+
+// The signed-in email travels as a header on every request (see lib/auth).
+function authHeaders(): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  const email = window.localStorage.getItem("clause.email");
+  return email ? { "X-User-Email": email } : {};
+}
+
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, init);
+  const res = await fetch(`${BASE_URL}${path}`, {
+    ...init,
+    headers: { ...authHeaders(), ...(init?.headers || {}) },
+  });
   if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || `HTTP ${res.status}`);
   return res.json();
 }
 
 export const api = {
+  login: (email: string) =>
+    req<{ email: string }>("/login", { method: "POST",
+      headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) }),
+  listCases: () => req<{ cases: CaseSummary[] }>("/cases").then((r) => r.cases),
   upload: (file: File) => {
     const fd = new FormData(); fd.append("file", file);
     return req<UploadResponse>("/upload", { method: "POST", body: fd });
