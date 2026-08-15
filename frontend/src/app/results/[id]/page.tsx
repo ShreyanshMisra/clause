@@ -38,6 +38,7 @@ function Stat({ label, value }: { label: string; value: string }) {
 export default function Results() {
   const { id } = useParams<{ id: string }>();
   const [data, setData] = useState<AnalysisResult | null>(null);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [scrollTarget, setScrollTarget] = useState<ScrollTarget | null>(null);
@@ -51,6 +52,15 @@ export default function Results() {
       console.error(e);
       setError("Could not load analysis. Is the backend running?");
     });
+  }, [id]);
+
+  // Load the owner-scoped PDF as a blob URL (see api.pdfObjectUrl), and revoke
+  // it on unmount so we don't leak object URLs.
+  useEffect(() => {
+    if (!id) return;
+    let url: string | null = null;
+    api.pdfObjectUrl(id).then((u) => { url = u; setPdfUrl(u); }).catch((e) => console.error(e));
+    return () => { if (url) URL.revokeObjectURL(url); };
   }, [id]);
 
   // Clicking a clause card → focus it and snap the PDF to its highlight.
@@ -120,13 +130,17 @@ export default function Results() {
       {/* Split view */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.4fr_1fr]">
         {/* Left: PDF with overlaid highlights */}
-        <PdfHighlights
-          url={api.pdfUrl(id)}
-          findings={data.highlights}
-          scrollTarget={scrollTarget}
-          activeId={activeId}
-          onHighlightClick={focusFromHighlight}
-        />
+        {pdfUrl ? (
+          <PdfHighlights
+            url={pdfUrl}
+            findings={data.highlights}
+            scrollTarget={scrollTarget}
+            activeId={activeId}
+            onHighlightClick={focusFromHighlight}
+          />
+        ) : (
+          <PdfPlaceholder />
+        )}
 
         {/* Right: clause cards */}
         <div className="flex flex-col gap-3 overflow-y-auto pr-1" style={{ maxHeight: "82vh" }}>
