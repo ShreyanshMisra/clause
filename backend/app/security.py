@@ -14,10 +14,22 @@ import secrets
 import time
 
 _ITERATIONS = 200_000
-# Set SECRET_KEY in the environment for production; the dev fallback keeps local
-# runs working but means tokens are forgeable if the default is left in place.
-_SECRET = os.environ.get("SECRET_KEY", "dev-insecure-secret-change-me").encode()
 _TOKEN_TTL = 7 * 24 * 3600  # 1 week
+
+# Sign tokens with SECRET_KEY. If it's unset we fall back to a *random*
+# per-process secret (never a hardcoded one), so tokens can never be forged
+# from a value that lives in the source. The tradeoff is that tokens don't
+# survive a restart when SECRET_KEY isn't configured — hence the warning.
+_env_secret = os.environ.get("SECRET_KEY")
+if _env_secret:
+    _SECRET = _env_secret.encode()
+else:
+    import logging
+    _SECRET = secrets.token_bytes(32)
+    logging.getLogger(__name__).warning(
+        "SECRET_KEY not set — using an ephemeral random secret; sessions won't "
+        "survive a restart. Set SECRET_KEY in production."
+    )
 
 
 # ── Passwords ──────────────────────────────────────────────────────────────
