@@ -5,11 +5,15 @@ from dotenv import load_dotenv
 # Load backend/.env before any module reads env (VECTOR_BACKEND, GEMINI_API_KEY, etc.).
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
-from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks
+from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel
+from typing import Optional
+import re
 import app.state as state
+import app.db as db
+from app import security
 from app.pdf_service import extract_pages
 from app.pii_service import redact
 from app.analysis import analyze_document
@@ -33,6 +37,10 @@ def _build_services():
     return llm, embedder
 
 @app.on_event("startup")
+def _init_db():
+    db.init()
+
+@app.on_event("startup")
 def _init_llm():
     if state.llm is None:
         try:
@@ -53,8 +61,60 @@ def _init_llm():
 def health():
     return {"status": "ok"}
 
+# ── Accounts ───────────────────────────────────────────────────────────────
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+def _norm_email(email: Optional[str]) -> Optional[str]:
+    if not email:
+        return None
+    email = email.strip().lower()
+    return email if _EMAIL_RE.match(email) else None
+
+class LoginBody(BaseModel):
+    email: str
+    password: str
+
+@app.post("/login")
+def login(body: LoginBody):
+    """Email + password accounts. The first login for an email registers it;
+    subsequent logins verify the password. Returns a signed session token that
+    later requests present as `Authorization: Bearer <token>`."""
+    email = _norm_email(body.email)
+    if email is None:
+        raise HTTPException(400, "Enter a valid email address")
+    if len(body.password) < 8:
+        raise HTTPException(400, "Password must be at least 8 characters")
+    user = db.get_user(email)
+    if user is None:
+        db.create_user(email, security.hash_password(body.password))  # register
+    elif not user.get("password_hash") or not security.verify_password(
+        body.password, user["password_hash"]
+    ):
+        raise HTTPException(401, "Incorrect password")
+    return {"email": email, "token": security.sign_token(email)}
+
+@app.get("/cases")
+def cases(authorization: Optional[str] = Header(default=None)):
+    email = security.email_from_token(authorization)
+    if email is None:
+        raise HTTPException(401, "Sign in to view your cases")
+    return {"cases": db.list_cases(email)}
+
+def _authorize_case(file_id: str, authorization: Optional[str]) -> None:
+    """Guard case-scoped endpoints against IDOR. A case that has an owner may
+    only be accessed by that owner (proven by a valid Bearer token); ownerless
+    (guest/demo) cases are public. We 404 on mismatch so we never confirm that
+    another user's file_id exists."""
+    case = db.get_case(file_id)
+    if case is None:
+        return  # unknown to the DB; the endpoint's own 404 handling applies
+    owner = case.get("user_email")
+    if owner is not None and security.email_from_token(authorization) != owner:
+        raise HTTPException(404, "Unknown file_id")
+
 @app.post("/upload")
-async def upload(file: UploadFile = File(...)):
+async def upload(file: UploadFile = File(...),
+                 authorization: Optional[str] = Header(default=None)):
     if not (file.filename or "").lower().endswith(".pdf"):
         raise HTTPException(400, "Only PDF files are accepted")
     data = await file.read()
@@ -76,6 +136,8 @@ async def upload(file: UploadFile = File(...)):
         for k, v in r.summary.items():
             summary[k] = summary.get(k, 0) + v
     state.registry.create(file_id, filename=file.filename)
+    email = security.email_from_token(authorization)  # None for guest uploads
+    db.create_case(file_id, email, file.filename or "lease.pdf", path)
     return {"file_id": file_id, "filename": file.filename, "size": len(data),
             "pii_redacted": summary,
             "message": f"Protected {sum(summary.values())} pieces of personal information"}
@@ -100,13 +162,20 @@ def _run_analysis(file_id: str):
         from app.bootstrap import seed_local_if_needed
         seed_local_if_needed(state.vector_store, state.embedder)
         state.seeded = True
-    result = analyze_document(file_id, state.pdf_path(file_id),
-                              state.redacted_pages.get(file_id, []),
-                              state.llm, state.embedder, state.vector_store, state.registry)
+    try:
+        result = analyze_document(file_id, state.pdf_path(file_id),
+                                  state.redacted_pages.get(file_id, []),
+                                  state.llm, state.embedder, state.vector_store, state.registry)
+    except Exception:
+        # Registry already marked failed; persist it so the dashboard card
+        # doesn't show a perpetual "Analysing…" for this case.
+        db.set_status(file_id, "failed")
+        raise
     md = state.metadata_store.get(file_id)
     if md is not None:
         result.documentMetadata = md
     state.results[file_id] = result
+    db.save_result(file_id, result.model_dump())
 
 @app.post("/analyze")
 def analyze(body: FileIdBody, background: BackgroundTasks):
@@ -117,21 +186,35 @@ def analyze(body: FileIdBody, background: BackgroundTasks):
     return {"file_id": body.file_id, "status": "processing"}
 
 @app.get("/status/{file_id}")
-def status(file_id: str):
+def status(file_id: str, authorization: Optional[str] = Header(default=None)):
+    _authorize_case(file_id, authorization)
     job = state.registry.get(file_id)
-    if job is None:
+    if job is not None:
+        return job.model_dump()
+    # Re-opened case after a restart: derive status from the persisted row.
+    case = db.get_case(file_id)
+    if case is None:
         raise HTTPException(404, "Unknown file_id")
-    return job.model_dump()
+    completed = case["status"] == "completed"
+    return {"file_id": file_id, "status": case["status"],
+            "progress": 100 if completed else 0,
+            "message": "Completed" if completed else case["status"],
+            "filename": case["filename"]}
 
 @app.get("/document/{file_id}")
-def document(file_id: str):
+def document(file_id: str, authorization: Optional[str] = Header(default=None)):
+    _authorize_case(file_id, authorization)
     result = state.results.get(file_id)
-    if result is None:
-        raise HTTPException(404, "Analysis not ready")
-    return result.model_dump()
+    if result is not None:
+        return result.model_dump()
+    stored = db.get_result(file_id)  # persisted case
+    if stored is not None:
+        return stored
+    raise HTTPException(404, "Analysis not ready")
 
 @app.get("/pdf/{file_id}")
-def pdf(file_id: str):
+def pdf(file_id: str, authorization: Optional[str] = Header(default=None)):
+    _authorize_case(file_id, authorization)
     path = state.pdf_path(file_id)
     if not os.path.exists(path):
         raise HTTPException(404, "PDF not found")
@@ -143,10 +226,15 @@ class DemandLetterBody(BaseModel):
     recipient: dict = {}
 
 @app.post("/demand-letter")
-def demand_letter(body: DemandLetterBody):
+def demand_letter(body: DemandLetterBody, authorization: Optional[str] = Header(default=None)):
+    _authorize_case(body.file_id, authorization)
     result = state.results.get(body.file_id)
     if result is None:
-        raise HTTPException(404, "Analysis not ready")
+        stored = db.get_result(body.file_id)  # persisted case
+        if stored is None:
+            raise HTTPException(404, "Analysis not ready")
+        from app.models import AnalysisResult
+        result = AnalysisResult(**stored)
     from app.llm_service import FindingDraft
     drafts = [FindingDraft(quoted_text=h.quoted_text, page=h.page, category=h.category,
                            severity=h.severity.value, statute_citation=h.statute_citation,

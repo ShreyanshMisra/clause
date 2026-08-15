@@ -1,11 +1,30 @@
+import type { CSSProperties } from "react";
 import { Finding } from "@/lib/api";
 import { SEVERITY_COLORS } from "@/app/theme";
 
-export function ClauseCard({ f, onClick }: { f: Finding; onClick: () => void }) {
+export function ClauseCard({
+  f,
+  onClick,
+  active = false,
+}: {
+  f: Finding;
+  onClick: () => void;
+  active?: boolean;
+}) {
   return (
     <button
       onClick={onClick}
-      className="w-full rounded-2xl bg-white/70 p-5 text-left shadow-sm transition hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 border border-white/40 backdrop-blur-sm"
+      aria-pressed={active}
+      className={`w-full rounded-2xl p-5 text-left backdrop-blur-sm transition-all duration-200 border ${
+        active
+          ? "bg-white shadow-lg -translate-y-0.5 ring-2"
+          : "bg-white/70 shadow-sm border-white/40 hover:shadow-md hover:-translate-y-0.5 active:translate-y-0"
+      }`}
+      style={
+        active
+          ? ({ borderColor: SEVERITY_COLORS[f.severity], ["--tw-ring-color" as string]: SEVERITY_COLORS[f.severity] } as CSSProperties)
+          : undefined
+      }
     >
       <div className="flex items-center gap-2">
         <span

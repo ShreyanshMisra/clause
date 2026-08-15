@@ -14,15 +14,32 @@ def test_extract_metadata_maps_fields():
     md = svc.extract_metadata("some redacted text")
     assert md.parties.landlord == "L" and md.monthlyRent == "$1000"
 
-def test_analyze_chunk_returns_finding_drafts():
+def test_analyze_chunk_grounds_and_canonicalizes_citation():
+    from app.vector_store import Statute
+    statutes = [Statute(id="186-15B", chapter="186", section="15B", title="Deposits", text="...")]
     client = FakeClient({"findings": [
         {"quoted_text": "no return of deposit", "page": 2, "category": "Deposit",
-         "severity": "illegal", "statute_citation": "M.G.L. c.186 s.15B",
+         "severity": "illegal", "statute_id": "186-15B",
          "explanation": "deposits must be returned", "damages_estimate": 1500}
     ]})
     svc = LLMService(client)
-    drafts = svc.analyze_chunk("chunk", [], page_hint=2)
+    drafts = svc.analyze_chunk("chunk", statutes, page_hint=2)
     assert drafts[0].severity == "illegal" and drafts[0].damages_estimate == 1500
+    # citation comes from our corpus, canonicalized — never the raw model output
+    assert drafts[0].statute_citation == "M.G.L. c.186 § 15B"
+
+def test_analyze_chunk_drops_ungrounded_findings():
+    from app.vector_store import Statute
+    statutes = [Statute(id="186-15B", chapter="186", section="15B", title="Deposits", text="...")]
+    client = FakeClient({"findings": [
+        {"quoted_text": "x", "page": 1, "category": "Made up", "severity": "illegal",
+         "statute_id": "999-999", "explanation": "hallucinated", "damages_estimate": 1},
+        {"quoted_text": "y", "page": 1, "category": "Deposit", "severity": "high",
+         "statute_id": "186-15B", "explanation": "real", "damages_estimate": 2},
+    ]})
+    svc = LLMService(client)
+    drafts = svc.analyze_chunk("chunk", statutes, page_hint=1)
+    assert len(drafts) == 1 and drafts[0].category == "Deposit"  # ungrounded one dropped
 
 def test_embed_delegates_to_client():
     svc = LLMService(FakeClient({}))

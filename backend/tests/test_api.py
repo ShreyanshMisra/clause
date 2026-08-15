@@ -16,7 +16,7 @@ class FakeClient:
         from app.pdf_service import extract_pages
         word = extract_pages(str(FIX))[0].text.split()[0]
         return {"findings": [{"quoted_text": word, "page": 1, "category": "Deposit",
-                              "severity": "illegal", "statute_citation": "c.186",
+                              "severity": "illegal", "statute_id": "a",
                               "explanation": "e", "damages_estimate": 1500}]}
     def generate_text(self, prompt): return "<p>Dear Landlord</p>"
 

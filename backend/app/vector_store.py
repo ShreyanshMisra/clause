@@ -26,6 +26,9 @@ class LocalVectorStore:
     def __init__(self) -> None:
         self._items: list[Statute] = []
 
+    def __len__(self) -> int:
+        return len(self._items)
+
     def seed(self, statutes: list[Statute]) -> None:
         self._items = list(statutes)
 

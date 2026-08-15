@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Vendored build artifacts (pdf.js worker) — not our source to lint.
+    "public/**",
   ]),
 ]);
 

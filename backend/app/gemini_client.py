@@ -5,7 +5,7 @@ _FENCE = re.compile(r"```(?:json)?\s*(\{.*\}|\[.*\])\s*```", re.DOTALL)
 
 # Hard per-request timeout so a slow/hanging model can never stall analysis
 # (some model aliases hang indefinitely on the generateContent path).
-_TIMEOUT = int(os.environ.get("GEMINI_TIMEOUT", "45"))
+_TIMEOUT = int(os.environ.get("GEMINI_TIMEOUT", "60"))
 
 class GeminiClient:
     def __init__(self, model=None, embed_fn: Optional[Callable[[str], list]] = None) -> None:

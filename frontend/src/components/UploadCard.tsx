@@ -505,13 +505,29 @@ export function UploadCard() {
               </svg>
               Choose a PDF file
             </button>
-            {/* Hidden file input triggered via ref — kept a sibling of the button
-                to avoid the label+for+nested-input double-activation quirk. */}
+            {/* Visually-hidden (not display:none) file input triggered via ref.
+                Safari won't open the picker for a programmatic .click() on a
+                display:none input, so we keep it in the layout but invisible.
+                Kept a sibling of the button to avoid the label+for+nested-input
+                double-activation quirk. */}
             <input
               ref={inputRef}
               type="file"
               accept="application/pdf"
-              hidden
+              tabIndex={-1}
+              aria-hidden
+              style={{
+                position: "absolute",
+                width: 1,
+                height: 1,
+                padding: 0,
+                margin: -1,
+                border: 0,
+                opacity: 0,
+                overflow: "hidden",
+                clipPath: "inset(50%)",
+                pointerEvents: "none",
+              }}
               onChange={(e) => {
                 const f = e.target.files?.[0];
                 if (f) handle(f);

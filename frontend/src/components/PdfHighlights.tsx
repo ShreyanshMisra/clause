@@ -5,21 +5,50 @@ import {
   PdfLoader,
   PdfHighlighter,
   AreaHighlight,
+  Popup,
 } from "react-pdf-highlighter";
 import type { IHighlight, ScaledPosition, Scaled } from "react-pdf-highlighter";
 import "react-pdf-highlighter/dist/style.css";
 
 import { Finding } from "@/lib/api";
-import { HIGHLIGHT_HEX } from "@/app/theme";
+import { HIGHLIGHT_HEX, SEVERITY_COLORS } from "@/app/theme";
 
-// The worker URL must match the pdfjs-dist version that react-pdf-highlighter
-// bundles internally (4.4.168). Using unpkg mirrors the old reference pattern.
+// The worker must match the pdfjs-dist version react-pdf-highlighter bundles (4.4.168);
+// self-hosted from /public.
 const WORKER_SRC = "/pdf.worker.min.mjs";
+
+export interface ScrollTarget {
+  id: string;
+  nonce: number;
+}
 
 interface Props {
   url: string;
   findings: Finding[];
-  scrollToId: string | null;
+  scrollTarget: ScrollTarget | null;
+  activeId: string | null;
+  onHighlightClick: (id: string) => void;
+}
+
+/** Small card shown on hover over a highlight. */
+function HoverCard({ finding }: { finding: Finding | undefined }) {
+  if (!finding) return null;
+  return (
+    <div className="max-w-xs rounded-xl bg-white p-4 shadow-xl border border-black/5">
+      <div className="flex items-center gap-2 mb-1">
+        <span className="h-2.5 w-2.5 rounded-full" style={{ background: SEVERITY_COLORS[finding.severity] }} />
+        <p className="font-semibold text-[var(--ink)] text-sm">{finding.category}</p>
+        <span className="ml-auto text-[10px] uppercase tracking-wide text-[var(--ink-subtle)]">
+          {finding.severity}
+        </span>
+      </div>
+      <p className="text-xs text-[var(--ink-muted)] leading-relaxed line-clamp-4">{finding.explanation}</p>
+      {finding.statute_citation && (
+        <p className="mt-2 text-[11px] text-[var(--accent-deep)] font-medium">{finding.statute_citation}</p>
+      )}
+      <p className="mt-2 text-[10px] text-[var(--ink-subtle)]">Click to view the clause →</p>
+    </div>
+  );
 }
 
 /** Convert a Finding's raw position into a ScaledPosition for react-pdf-highlighter. */
@@ -74,7 +103,7 @@ function getHighlightColor(finding: Finding | undefined): string {
   return `rgba(${r}, ${g}, ${b}, 0.35)`;
 }
 
-export function PdfHighlights({ url, findings, scrollToId }: Props) {
+export function PdfHighlights({ url, findings, scrollTarget, activeId, onHighlightClick }: Props) {
   const scrollToRef = useRef<((h: IHighlight) => void) | null>(null);
   const highlights: IHighlight[] = findings
     .map(findingToHighlight)
@@ -82,12 +111,13 @@ export function PdfHighlights({ url, findings, scrollToId }: Props) {
 
   const findingMap = new Map(findings.map((f) => [f.id, f]));
 
-  // Scroll to the matching highlight whenever scrollToId changes
+  // Scroll to the matching highlight whenever a scroll is requested (nonce changes even
+  // if the same card is clicked twice).
   useEffect(() => {
-    if (!scrollToId || !scrollToRef.current) return;
-    const h = highlights.find((x) => x.id === scrollToId);
+    if (!scrollTarget || !scrollToRef.current) return;
+    const h = highlights.find((x) => x.id === scrollTarget.id);
     if (h) scrollToRef.current(h);
-  }, [scrollToId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [scrollTarget?.nonce]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleScrollRef = useCallback((scrollTo: (h: IHighlight) => void) => {
     scrollToRef.current = scrollTo;
@@ -118,35 +148,37 @@ export function PdfHighlights({ url, findings, scrollToId }: Props) {
             scrollRef={handleScrollRef}
             onSelectionFinished={() => null}
             highlights={highlights}
-            highlightTransform={(highlight, _index, setTip, hideTip, _vtS, _ss, isScrolledTo) => {
+            highlightTransform={(highlight, index, setTip, hideTip, _vtS, _ss, isScrolledTo) => {
               const original = findingMap.get(highlight.id);
+              const isActive = highlight.id === activeId;
               const color = getHighlightColor(original);
-              // AreaHighlight accepts ...otherProps spread to the underlying Rnd component;
-              // we cast to any because the TS type doesn't declare style/onClick/onMouseLeave.
+              // AreaHighlight spreads extra props to its Rnd; cast to any because the TS
+              // type doesn't declare style/onClick.
               const areaProps = {
-                key: highlight.id,
                 highlight,
                 isScrolledTo,
                 onChange: () => {},
-                style: { backgroundColor: color },
-                onClick: (e: React.MouseEvent) => {
-                  e.stopPropagation();
-                  if (original) {
-                    setTip(highlight, () => (
-                      <div className="max-w-xs rounded-xl bg-white p-4 shadow-xl text-sm">
-                        <p className="font-semibold text-[var(--ink)] mb-1">{original.category}</p>
-                        <p className="text-[var(--ink-muted)] line-clamp-3">{original.explanation}</p>
-                        {original.statute_citation && (
-                          <p className="mt-2 text-xs text-[var(--accent-deep)]">{original.statute_citation}</p>
-                        )}
-                      </div>
-                    ));
-                  }
+                style: {
+                  backgroundColor: color,
+                  cursor: "pointer",
+                  transition: "outline 0.15s ease, background-color 0.15s ease",
+                  outline: isActive ? `2px solid ${original ? HIGHLIGHT_HEX[original.color] : "#D97757"}` : "none",
+                  outlineOffset: "1px",
                 },
-                onMouseLeave: hideTip,
-              } as any;
+                onClick: () => onHighlightClick(highlight.id),
+              } as unknown as React.ComponentProps<typeof AreaHighlight>;
 
-              return <AreaHighlight {...areaProps} />;
+              // Popup shows the hover card via setTip/hideTip on mouse over/out.
+              return (
+                <Popup
+                  key={index}
+                  popupContent={<HoverCard finding={original} />}
+                  onMouseOver={(popupContent) => setTip(highlight, () => popupContent)}
+                  onMouseOut={hideTip}
+                >
+                  <AreaHighlight {...areaProps} />
+                </Popup>
+              );
             }}
           />
         )}

@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
+import Link from "next/link";
 import dynamic from "next/dynamic";
 import { api, AnalysisResult } from "@/lib/api";
+import type { ScrollTarget } from "@/components/PdfHighlights";
 import { ClauseCard } from "@/components/ClauseCard";
 import { DemandLetterModal } from "@/components/DemandLetterModal";
 
@@ -36,10 +38,13 @@ function Stat({ label, value }: { label: string; value: string }) {
 export default function Results() {
   const { id } = useParams<{ id: string }>();
   const [data, setData] = useState<AnalysisResult | null>(null);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [scrollToId, setScrollToId] = useState<string | null>(null);
-  // Placeholder state for demand-letter modal (wired in the next task)
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [scrollTarget, setScrollTarget] = useState<ScrollTarget | null>(null);
   const [letterOpen, setLetterOpen] = useState(false);
+  const nonce = useRef(0);
+  const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   useEffect(() => {
     if (!id) return;
@@ -48,6 +53,28 @@ export default function Results() {
       setError("Could not load analysis. Is the backend running?");
     });
   }, [id]);
+
+  // Load the owner-scoped PDF as a blob URL (see api.pdfObjectUrl), and revoke
+  // it on unmount so we don't leak object URLs.
+  useEffect(() => {
+    if (!id) return;
+    let url: string | null = null;
+    api.pdfObjectUrl(id).then((u) => { url = u; setPdfUrl(u); }).catch((e) => console.error(e));
+    return () => { if (url) URL.revokeObjectURL(url); };
+  }, [id]);
+
+  // Clicking a clause card → focus it and snap the PDF to its highlight.
+  const focusFromCard = useCallback((fid: string) => {
+    setActiveId(fid);
+    nonce.current += 1;
+    setScrollTarget({ id: fid, nonce: nonce.current });
+  }, []);
+
+  // Clicking a highlight → focus it and scroll its clause card into view.
+  const focusFromHighlight = useCallback((fid: string) => {
+    setActiveId(fid);
+    cardRefs.current.get(fid)?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, []);
 
   if (error) {
     return (
@@ -72,6 +99,18 @@ export default function Results() {
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
+      {/* Back to dashboard */}
+      <Link
+        href="/dashboard"
+        className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium transition-colors"
+        style={{ color: "var(--ink-muted)" }}
+      >
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
+          <path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        Dashboard
+      </Link>
+
       {/* Summary header */}
       <header className="mb-6 flex flex-wrap items-center gap-6 rounded-3xl bg-[var(--surface)]/70 p-6 backdrop-blur-sm border border-white/40 shadow-sm">
         <Stat label="Overall risk" value={s.overallRisk} />
@@ -91,25 +130,39 @@ export default function Results() {
       {/* Split view */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.4fr_1fr]">
         {/* Left: PDF with overlaid highlights */}
-        <PdfHighlights
-          url={api.pdfUrl(id)}
-          findings={data.highlights}
-          scrollToId={scrollToId}
-        />
+        {pdfUrl ? (
+          <PdfHighlights
+            url={pdfUrl}
+            findings={data.highlights}
+            scrollTarget={scrollTarget}
+            activeId={activeId}
+            onHighlightClick={focusFromHighlight}
+          />
+        ) : (
+          <PdfPlaceholder />
+        )}
 
         {/* Right: clause cards */}
-        <div className="flex flex-col gap-3 overflow-y-auto" style={{ maxHeight: "82vh" }}>
+        <div className="flex flex-col gap-3 overflow-y-auto pr-1" style={{ maxHeight: "82vh" }}>
           {data.highlights.length === 0 ? (
             <p className="text-center text-[var(--ink-muted)] mt-10">
               No clauses flagged.
             </p>
           ) : (
             data.highlights.map((f) => (
-              <ClauseCard
+              <div
                 key={f.id}
-                f={f}
-                onClick={() => setScrollToId(f.id)}
-              />
+                ref={(el) => {
+                  if (el) cardRefs.current.set(f.id, el);
+                  else cardRefs.current.delete(f.id);
+                }}
+              >
+                <ClauseCard
+                  f={f}
+                  active={activeId === f.id}
+                  onClick={() => focusFromCard(f.id)}
+                />
+              </div>
             ))
           )}
         </div>
