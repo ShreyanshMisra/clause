@@ -43,8 +43,9 @@ def init(path: Optional[str] = None) -> None:
         _conn.executescript(
             """
             CREATE TABLE IF NOT EXISTS users (
-                email      TEXT PRIMARY KEY,
-                created_at REAL NOT NULL
+                email         TEXT PRIMARY KEY,
+                created_at    REAL NOT NULL,
+                password_hash TEXT
             );
             CREATE TABLE IF NOT EXISTS cases (
                 id          TEXT PRIMARY KEY,
@@ -61,6 +62,11 @@ def init(path: Optional[str] = None) -> None:
             CREATE INDEX IF NOT EXISTS idx_cases_user ON cases(user_email);
             """
         )
+        # Migrate older databases that predate password auth.
+        try:
+            _conn.execute("ALTER TABLE users ADD COLUMN password_hash TEXT")
+        except sqlite3.OperationalError:
+            pass  # column already exists
         _conn.commit()
 
 
@@ -85,6 +91,20 @@ def upsert_user(email: str) -> None:
             (email, time.time()),
         )
         _db().commit()
+
+
+def create_user(email: str, password_hash: str) -> None:
+    with _lock:
+        _db().execute(
+            "INSERT INTO users(email, created_at, password_hash) VALUES(?, ?, ?)",
+            (email, time.time(), password_hash),
+        )
+        _db().commit()
+
+
+def get_user(email: str) -> Optional[dict]:
+    row = _db().execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
+    return dict(row) if row else None
 
 
 # ── Cases ────────────────────────────────────────────────────────────────

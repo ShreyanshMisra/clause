@@ -2,10 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 
-/* Liquid "goo" email field. A coral liquid layer (field pill + submit blob +
-   emitted droplets) is rendered under an SVG goo filter so the shapes merge
-   like liquid; the crisp <input> and button label sit on an unfiltered layer
-   on top so text stays sharp. Inspired by gooey.jakubantalik.com. */
+/* Liquid "goo" auth form: stacked email + password pills rendered under an SVG
+   goo filter so the coral shapes merge like liquid, with crisp inputs on an
+   unfiltered layer on top. The submit blob lives on the password row and emits
+   droplets that merge back into it. Extends the original email-only field so
+   the two share one visual language. Inspired by gooey.jakubantalik.com. */
 
 const KEYFRAMES = `
 @keyframes gooDrop1 {
@@ -35,18 +36,41 @@ const KEYFRAMES = `
 }
 `;
 
-export function GooeyEmailInput({
+const ROW = 60; // px height of each liquid pill
+const GAP = 12; // px gap between the two pills
+
+/* One liquid pill background — coral, brightens on focus. */
+function FieldBlob({ top, focused }: { top: number; focused: boolean }) {
+  return (
+    <div
+      style={{
+        position: "absolute",
+        left: 0,
+        right: 0,
+        top,
+        height: ROW,
+        borderRadius: ROW / 2,
+        background: focused ? "rgba(217,119,87,0.20)" : "rgba(217,119,87,0.13)",
+        transition: "background 0.3s ease",
+      }}
+    />
+  );
+}
+
+export function GooeyAuthForm({
   onSubmit,
   busy,
   error,
 }: {
-  onSubmit: (email: string) => void;
+  onSubmit: (email: string, password: string) => void;
   busy: boolean;
   error: string | null;
 }) {
   const [email, setEmail] = useState("");
-  const [focused, setFocused] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [password, setPassword] = useState("");
+  const [focused, setFocused] = useState<"email" | "password" | null>(null);
+  const emailRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const id = "clause-gooey-kf";
@@ -56,20 +80,35 @@ export function GooeyEmailInput({
       s.textContent = KEYFRAMES;
       document.head.appendChild(s);
     }
-    inputRef.current?.focus();
+    emailRef.current?.focus();
   }, []);
 
   const submit = () => {
-    if (!busy && email.trim()) onSubmit(email.trim());
+    if (!busy && email.trim() && password) onSubmit(email.trim(), password);
+  };
+
+  const passwordTop = ROW + GAP;
+  const inputBase: React.CSSProperties = {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    height: ROW,
+    paddingLeft: "24px",
+    paddingRight: "68px",
+    borderRadius: ROW / 2,
+    border: "none",
+    outline: "none",
+    background: "transparent",
+    color: "var(--ink)",
+    fontSize: "16px",
+    fontWeight: 500,
+    letterSpacing: "-0.01em",
   };
 
   return (
     <div style={{ width: "100%" }}>
       {/* Hidden goo filter definition */}
-      <svg
-        aria-hidden
-        style={{ position: "absolute", width: 0, height: 0 }}
-      >
+      <svg aria-hidden style={{ position: "absolute", width: 0, height: 0 }}>
         <defs>
           <filter id="clause-goo">
             <feGaussianBlur in="SourceGraphic" stdDeviation="7" result="blur" />
@@ -87,39 +126,25 @@ export function GooeyEmailInput({
       <div
         style={{
           position: "relative",
-          height: "60px",
-          transform: focused ? "scale(1.015)" : "scale(1)",
+          height: ROW * 2 + GAP,
+          transform: focused ? "scale(1.012)" : "scale(1)",
           transition: "transform 0.3s cubic-bezier(.34,1.56,.64,1)",
         }}
       >
         {/* ── Liquid layer (goo-filtered) ─────────────────────────────── */}
         <div
           aria-hidden
-          style={{
-            position: "absolute",
-            inset: 0,
-            filter: "url(#clause-goo)",
-            pointerEvents: "none",
-          }}
+          style={{ position: "absolute", inset: 0, filter: "url(#clause-goo)", pointerEvents: "none" }}
         >
-          {/* Field pill */}
-          <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              borderRadius: "30px",
-              background: focused
-                ? "rgba(217,119,87,0.20)"
-                : "rgba(217,119,87,0.13)",
-              transition: "background 0.3s ease",
-            }}
-          />
-          {/* Submit blob (right) — overlaps the pill so they merge */}
+          <FieldBlob top={0} focused={focused === "email"} />
+          <FieldBlob top={passwordTop} focused={focused === "password"} />
+
+          {/* Submit blob — on the password row, overlapping its right end */}
           <div
             style={{
               position: "absolute",
               right: "4px",
-              top: "4px",
+              top: passwordTop + 4,
               width: "52px",
               height: "52px",
               borderRadius: "50%",
@@ -134,7 +159,7 @@ export function GooeyEmailInput({
               style={{
                 position: "absolute",
                 right: "18px",
-                top: "22px",
+                top: passwordTop + 22,
                 width: `${16 - i * 3}px`,
                 height: `${16 - i * 3}px`,
                 borderRadius: "50%",
@@ -147,7 +172,7 @@ export function GooeyEmailInput({
 
         {/* ── Crisp interactive layer ─────────────────────────────────── */}
         <input
-          ref={inputRef}
+          ref={emailRef}
           type="email"
           inputMode="email"
           autoComplete="email"
@@ -155,25 +180,23 @@ export function GooeyEmailInput({
           value={email}
           disabled={busy}
           onChange={(e) => setEmail(e.target.value)}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
+          onFocus={() => setFocused("email")}
+          onBlur={() => setFocused(null)}
+          onKeyDown={(e) => e.key === "Enter" && passwordRef.current?.focus()}
+          style={{ ...inputBase, top: 0 }}
+        />
+        <input
+          ref={passwordRef}
+          type="password"
+          autoComplete="current-password"
+          placeholder="Password"
+          value={password}
+          disabled={busy}
+          onChange={(e) => setPassword(e.target.value)}
+          onFocus={() => setFocused("password")}
+          onBlur={() => setFocused(null)}
           onKeyDown={(e) => e.key === "Enter" && submit()}
-          style={{
-            position: "absolute",
-            inset: 0,
-            width: "100%",
-            height: "100%",
-            paddingLeft: "24px",
-            paddingRight: "68px",
-            borderRadius: "30px",
-            border: "none",
-            outline: "none",
-            background: "transparent",
-            color: "var(--ink)",
-            fontSize: "16px",
-            fontWeight: 500,
-            letterSpacing: "-0.01em",
-          }}
+          style={{ ...inputBase, top: passwordTop }}
         />
         <button
           type="button"
@@ -183,7 +206,7 @@ export function GooeyEmailInput({
           style={{
             position: "absolute",
             right: "4px",
-            top: "4px",
+            top: passwordTop + 4,
             width: "52px",
             height: "52px",
             borderRadius: "50%",
@@ -213,12 +236,7 @@ export function GooeyEmailInput({
       {error && (
         <p
           role="alert"
-          style={{
-            marginTop: "12px",
-            fontSize: "13px",
-            color: "var(--sev-illegal)",
-            animation: "fadeIn 0.2s ease both",
-          }}
+          style={{ marginTop: "12px", fontSize: "13px", color: "var(--sev-illegal)", animation: "fadeIn 0.2s ease both" }}
         >
           {error}
         </p>

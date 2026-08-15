@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
-import { getUser, setUser, isValidEmail } from "@/lib/auth";
-import { GooeyEmailInput } from "@/components/GooeyEmailInput";
+import { getUser, setSession, isValidEmail } from "@/lib/auth";
+import { GooeyAuthForm } from "@/components/GooeyAuthForm";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -16,16 +16,20 @@ export default function LoginPage() {
     if (getUser()) router.replace("/dashboard");
   }, [router]);
 
-  const handleSubmit = async (email: string) => {
+  const handleSubmit = async (email: string, password: string) => {
     setError(null);
     if (!isValidEmail(email)) {
       setError("Please enter a valid email address.");
       return;
     }
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters.");
+      return;
+    }
     setBusy(true);
     try {
-      const { email: normalized } = await api.login(email);
-      setUser(normalized);
+      const { email: normalized, token } = await api.login(email, password);
+      setSession(normalized, token);
       router.replace("/dashboard");
     } catch (e) {
       setError((e as Error).message || "Could not sign in. Is the backend running?");
@@ -89,11 +93,11 @@ export default function LoginPage() {
           className="mb-8 text-sm font-medium leading-relaxed"
           style={{ color: "var(--ink-muted)" }}
         >
-          Enter your email to continue — no password needed. Your email is your
-          account, and your analysed leases live under it.
+          Enter your email and a password to continue. New here? The first time
+          you sign in creates your account, and your analysed leases live under it.
         </p>
 
-        <GooeyEmailInput onSubmit={handleSubmit} busy={busy} error={error} />
+        <GooeyAuthForm onSubmit={handleSubmit} busy={busy} error={error} />
 
         <p className="mt-6 text-xs" style={{ color: "var(--ink-subtle)" }}>
           Personal information in your lease is redacted before analysis.
