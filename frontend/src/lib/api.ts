@@ -34,11 +34,11 @@ export interface CaseSummary {
   estimated_recovery: string | null;
 }
 
-// The signed-in email travels as a header on every request (see lib/auth).
+// The signed session token travels as a Bearer header on every request.
 function authHeaders(): Record<string, string> {
   if (typeof window === "undefined") return {};
-  const email = window.localStorage.getItem("clause.email");
-  return email ? { "X-User-Email": email } : {};
+  const token = window.localStorage.getItem("clause.token");
+  return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
@@ -51,9 +51,9 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  login: (email: string) =>
-    req<{ email: string }>("/login", { method: "POST",
-      headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) }),
+  login: (email: string, password: string) =>
+    req<{ email: string; token: string }>("/login", { method: "POST",
+      headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password }) }),
   listCases: () => req<{ cases: CaseSummary[] }>("/cases").then((r) => r.cases),
   upload: (file: File) => {
     const fd = new FormData(); fd.append("file", file);

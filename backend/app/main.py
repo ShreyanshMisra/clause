@@ -13,6 +13,7 @@ from typing import Optional
 import re
 import app.state as state
 import app.db as db
+from app import security
 from app.pdf_service import extract_pages
 from app.pii_service import redact
 from app.analysis import analyze_document
@@ -71,40 +72,49 @@ def _norm_email(email: Optional[str]) -> Optional[str]:
 
 class LoginBody(BaseModel):
     email: str
+    password: str
 
 @app.post("/login")
 def login(body: LoginBody):
-    """Password-less accounts: the email is the username. Upsert and return it."""
+    """Email + password accounts. The first login for an email registers it;
+    subsequent logins verify the password. Returns a signed session token that
+    later requests present as `Authorization: Bearer <token>`."""
     email = _norm_email(body.email)
     if email is None:
         raise HTTPException(400, "Enter a valid email address")
-    db.upsert_user(email)
-    return {"email": email}
+    if len(body.password) < 8:
+        raise HTTPException(400, "Password must be at least 8 characters")
+    user = db.get_user(email)
+    if user is None:
+        db.create_user(email, security.hash_password(body.password))  # register
+    elif not user.get("password_hash") or not security.verify_password(
+        body.password, user["password_hash"]
+    ):
+        raise HTTPException(401, "Incorrect password")
+    return {"email": email, "token": security.sign_token(email)}
 
 @app.get("/cases")
-def cases(x_user_email: Optional[str] = Header(default=None)):
-    email = _norm_email(x_user_email)
+def cases(authorization: Optional[str] = Header(default=None)):
+    email = security.email_from_token(authorization)
     if email is None:
         raise HTTPException(401, "Sign in to view your cases")
     return {"cases": db.list_cases(email)}
 
-def _authorize_case(file_id: str, x_user_email: Optional[str]) -> None:
+def _authorize_case(file_id: str, authorization: Optional[str]) -> None:
     """Guard case-scoped endpoints against IDOR. A case that has an owner may
-    only be accessed with the matching X-User-Email; ownerless (guest/demo)
-    cases are public. We 404 on mismatch so we never confirm that another
-    user's file_id exists. (The email header is spoofable by design in this
-    password-less model — this is defence-in-depth plus enumeration
-    protection, layered on top of the unguessable uuid4 file_id.)"""
+    only be accessed by that owner (proven by a valid Bearer token); ownerless
+    (guest/demo) cases are public. We 404 on mismatch so we never confirm that
+    another user's file_id exists."""
     case = db.get_case(file_id)
     if case is None:
         return  # unknown to the DB; the endpoint's own 404 handling applies
     owner = case.get("user_email")
-    if owner is not None and _norm_email(x_user_email) != owner:
+    if owner is not None and security.email_from_token(authorization) != owner:
         raise HTTPException(404, "Unknown file_id")
 
 @app.post("/upload")
 async def upload(file: UploadFile = File(...),
-                 x_user_email: Optional[str] = Header(default=None)):
+                 authorization: Optional[str] = Header(default=None)):
     if not (file.filename or "").lower().endswith(".pdf"):
         raise HTTPException(400, "Only PDF files are accepted")
     data = await file.read()
@@ -126,9 +136,7 @@ async def upload(file: UploadFile = File(...),
         for k, v in r.summary.items():
             summary[k] = summary.get(k, 0) + v
     state.registry.create(file_id, filename=file.filename)
-    email = _norm_email(x_user_email)
-    if email is not None:
-        db.upsert_user(email)
+    email = security.email_from_token(authorization)  # None for guest uploads
     db.create_case(file_id, email, file.filename or "lease.pdf", path)
     return {"file_id": file_id, "filename": file.filename, "size": len(data),
             "pii_redacted": summary,
@@ -178,8 +186,8 @@ def analyze(body: FileIdBody, background: BackgroundTasks):
     return {"file_id": body.file_id, "status": "processing"}
 
 @app.get("/status/{file_id}")
-def status(file_id: str, x_user_email: Optional[str] = Header(default=None)):
-    _authorize_case(file_id, x_user_email)
+def status(file_id: str, authorization: Optional[str] = Header(default=None)):
+    _authorize_case(file_id, authorization)
     job = state.registry.get(file_id)
     if job is not None:
         return job.model_dump()
@@ -194,8 +202,8 @@ def status(file_id: str, x_user_email: Optional[str] = Header(default=None)):
             "filename": case["filename"]}
 
 @app.get("/document/{file_id}")
-def document(file_id: str, x_user_email: Optional[str] = Header(default=None)):
-    _authorize_case(file_id, x_user_email)
+def document(file_id: str, authorization: Optional[str] = Header(default=None)):
+    _authorize_case(file_id, authorization)
     result = state.results.get(file_id)
     if result is not None:
         return result.model_dump()
@@ -205,8 +213,8 @@ def document(file_id: str, x_user_email: Optional[str] = Header(default=None)):
     raise HTTPException(404, "Analysis not ready")
 
 @app.get("/pdf/{file_id}")
-def pdf(file_id: str, x_user_email: Optional[str] = Header(default=None)):
-    _authorize_case(file_id, x_user_email)
+def pdf(file_id: str, authorization: Optional[str] = Header(default=None)):
+    _authorize_case(file_id, authorization)
     path = state.pdf_path(file_id)
     if not os.path.exists(path):
         raise HTTPException(404, "PDF not found")
@@ -218,8 +226,8 @@ class DemandLetterBody(BaseModel):
     recipient: dict = {}
 
 @app.post("/demand-letter")
-def demand_letter(body: DemandLetterBody, x_user_email: Optional[str] = Header(default=None)):
-    _authorize_case(body.file_id, x_user_email)
+def demand_letter(body: DemandLetterBody, authorization: Optional[str] = Header(default=None)):
+    _authorize_case(body.file_id, authorization)
     result = state.results.get(body.file_id)
     if result is None:
         stored = db.get_result(body.file_id)  # persisted case
