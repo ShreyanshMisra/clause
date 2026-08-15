@@ -11,7 +11,7 @@ class FakeClient:
         from app.pdf_service import extract_pages
         word = extract_pages(FIX)[0].text.split()[0]
         return {"findings": [{"quoted_text": word, "page": 1, "category": "Deposit",
-                              "severity": "illegal", "statute_citation": "c.186 s.15B",
+                              "severity": "illegal", "statute_id": "a",
                               "explanation": "deposit issue", "damages_estimate": 1500}]}
 
 def test_analyze_document_produces_result_and_progress():

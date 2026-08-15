@@ -10,16 +10,18 @@ _RISK_LABEL = {3: "Critical", 2: "High", 1: "Medium", 0: "Low"}
 
 # Pages analyzed per LLM call. Grouping cuts request count (e.g. 16 pages / 4 = 4 calls
 # instead of 16) to stay under free-tier daily quotas; page markers keep highlights accurate.
-_PAGE_GROUP = max(1, int(os.environ.get("ANALYSIS_PAGE_GROUP", "4")))
+_PAGE_GROUP = max(1, int(os.environ.get("ANALYSIS_PAGE_GROUP", "2")))
 
 def analyze_document(file_id: str, pdf_path: str, redacted_pages: list[str],
                      llm: LLMService, embedder, store: VectorStore, registry: JobRegistry,
-                     top_k: int = 4) -> AnalysisResult:
+                     top_k: int = 6) -> AnalysisResult:
     try:
         registry.update(file_id, status="processing", progress=20, message="Loading document...")
         pages = redacted_pages or [""]
         groups = [pages[i:i + _PAGE_GROUP] for i in range(0, len(pages), _PAGE_GROUP)]
         drafts = []
+        errors = 0
+        last_error = None
         for gi, group in enumerate(groups):
             base = gi * _PAGE_GROUP
             first, last = base + 1, base + len(group)
@@ -32,8 +34,19 @@ def analyze_document(file_id: str, pdf_path: str, redacted_pages: list[str],
                                  for j, txt in enumerate(group) if txt.strip())
             if not marked.strip():
                 continue
-            statutes = store.search(embedder.embed(marked), k=top_k)
-            drafts.extend(llm.analyze_chunk(marked, statutes, page_hint=first))
+            # Resilience: a transient per-chunk failure (timeout/rate-limit) skips that
+            # chunk instead of failing the whole document — partial results beat none.
+            try:
+                statutes = store.search(embedder.embed(marked), k=top_k)
+                drafts.extend(llm.analyze_chunk(marked, statutes, page_hint=first))
+            except Exception as e:  # noqa: BLE001
+                errors += 1
+                last_error = e
+                continue
+
+        # Only hard-fail if every chunk errored (e.g. quota exhausted / bad key).
+        if not drafts and errors and last_error is not None:
+            raise last_error
 
         registry.update(file_id, progress=90, message="Extracting highlight positions...")
         highlights = [build_highlight(d, pdf_path, i) for i, d in enumerate(drafts)]
