@@ -60,3 +60,35 @@ def test_case_isolated_between_users():
                               files={"file": ("l.pdf", f, "application/pdf")}).json()["file_id"]
         other = client.get("/cases", headers={"X-User-Email": "b@example.com"}).json()["cases"]
         assert fid not in [c["id"] for c in other]
+
+
+def test_owned_case_endpoints_reject_other_users():
+    owner, attacker = "owner@example.com", "attacker@example.com"
+    with TestClient(app) as client:
+        with open(FIX, "rb") as f:
+            fid = client.post("/upload", headers={"X-User-Email": owner},
+                              files={"file": ("l.pdf", f, "application/pdf")}).json()["file_id"]
+        client.post("/analyze", json={"file_id": fid})
+
+        # Owner can read their own case + PDF.
+        assert client.get(f"/document/{fid}", headers={"X-User-Email": owner}).status_code == 200
+        assert client.get(f"/pdf/{fid}", headers={"X-User-Email": owner}).status_code == 200
+
+        # Another user — and a request with no header — get 404 (not 403), so we
+        # never confirm the file_id exists.
+        for hdr in ({"X-User-Email": attacker}, {}):
+            assert client.get(f"/document/{fid}", headers=hdr).status_code == 404
+            assert client.get(f"/pdf/{fid}", headers=hdr).status_code == 404
+            assert client.get(f"/status/{fid}", headers=hdr).status_code == 404
+            assert client.post("/demand-letter", headers=hdr,
+                               json={"file_id": fid}).status_code == 404
+
+
+def test_guest_case_remains_public():
+    # A case uploaded with no account (owner is NULL) stays accessible — this is
+    # the demo/anonymous path the base test suite relies on.
+    with TestClient(app) as client:
+        with open(FIX, "rb") as f:
+            fid = client.post("/upload",
+                              files={"file": ("l.pdf", f, "application/pdf")}).json()["file_id"]
+        assert client.get(f"/pdf/{fid}").status_code == 200

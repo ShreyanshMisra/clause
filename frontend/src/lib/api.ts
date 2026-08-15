@@ -64,10 +64,16 @@ export const api = {
       headers: { "Content-Type": "application/json" }, body: JSON.stringify({ file_id }) }),
   status: (file_id: string) => req<StatusResponse>(`/status/${file_id}`),
   document: (file_id: string) => req<AnalysisResult>(`/document/${file_id}`),
-  pdfUrl: (file_id: string) => `${BASE_URL}/pdf/${file_id}`,
+  // The PDF is owner-scoped, so it can't be a plain <embed> URL (pdf.js can't
+  // send the auth header). Fetch it with auth and hand the viewer a blob URL.
+  pdfObjectUrl: async (file_id: string): Promise<string> => {
+    const res = await fetch(`${BASE_URL}/pdf/${file_id}`, { headers: authHeaders() });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return URL.createObjectURL(await res.blob());
+  },
   warmup: () => fetch(`${BASE_URL}/health`).catch(() => {}),
   demandLetter: (file_id: string, sender: object, recipient: object) =>
     fetch(`${BASE_URL}/demand-letter`, { method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...authHeaders() },
       body: JSON.stringify({ file_id, sender, recipient }) }),
 };
