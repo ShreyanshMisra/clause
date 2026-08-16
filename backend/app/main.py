@@ -210,9 +210,10 @@ async def upload(request: Request, file: UploadFile = File(...),
     for r in page_redactions:
         for k, v in r.summary.items():
             summary[k] = summary.get(k, 0) + v
-    state.registry.create(file_id, filename=file.filename)
+    filename = file.filename or "lease.pdf"
+    state.registry.create(file_id, filename=filename)
     email = security.email_from_token(authorization)  # None for guest uploads
-    db.create_case(file_id, email, file.filename or "lease.pdf", path)
+    db.create_case(file_id, email, filename, path)
     return {"file_id": file_id, "filename": file.filename, "size": len(data),
             "pii_redacted": summary,
             "message": f"Protected {sum(summary.values())} pieces of personal information"}
