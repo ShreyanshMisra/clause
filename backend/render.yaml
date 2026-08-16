@@ -26,11 +26,14 @@ services:
         sync: false
       - key: SNOWFLAKE_USER
         sync: false
-      - key: SNOWFLAKE_PASSWORD
-        sync: false
-        # Password auth. Only works if this Snowflake user is NOT MFA-enforced.
-        # For MFA/key-pair instead: upload rsa_key.p8 as a Render Secret File
-        # (mounts at /etc/secrets/rsa_key.p8) and set SNOWFLAKE_PRIVATE_KEY_PATH to it.
+      # Auth: key-pair is the default (works with MFA-enforced accounts).
+      # Upload rsa_key.p8 as a Render Secret File (mounts at /etc/secrets/rsa_key.p8)
+      # and point this at it. The matching public key must be registered on the
+      # Snowflake user (ALTER USER ... SET RSA_PUBLIC_KEY=...).
+      - key: SNOWFLAKE_PRIVATE_KEY_PATH
+        value: /etc/secrets/rsa_key.p8
+      # Alternative: for a non-MFA user, drop the key above and set SNOWFLAKE_PASSWORD
+      # (sync: false) instead — the app falls back to password auth when no key path is set.
       - key: SNOWFLAKE_WAREHOUSE
         value: CLAUSE_WH
       - key: SNOWFLAKE_DATABASE
