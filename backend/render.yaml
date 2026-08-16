@@ -10,8 +10,30 @@ services:
       - key: GEMINI_API_KEY
         sync: false
       - key: VECTOR_BACKEND
-        value: local
+        value: snowflake
       - key: ALLOWED_ORIGINS
         sync: false
         # REQUIRED: set to your Vercel URL, e.g. https://clause-yourapp.vercel.app
         # Comma-separate multiple origins. Without this, the deployed frontend is CORS-blocked.
+      - key: SECRET_KEY
+        sync: false
+        # Signs session tokens. Without it, each restart invalidates all logins.
+        # Generate: python -c "import secrets;print(secrets.token_hex(32))"
+      # --- Snowflake Cortex mode (VECTOR_BACKEND=snowflake) ---
+      # The STATUTES table is seeded once out-of-band (python -m app.seed_statutes)
+      # and persists in Snowflake; the deployed app only queries it.
+      - key: SNOWFLAKE_ACCOUNT
+        sync: false
+      - key: SNOWFLAKE_USER
+        sync: false
+      - key: SNOWFLAKE_PASSWORD
+        sync: false
+        # Password auth. Only works if this Snowflake user is NOT MFA-enforced.
+        # For MFA/key-pair instead: upload rsa_key.p8 as a Render Secret File
+        # (mounts at /etc/secrets/rsa_key.p8) and set SNOWFLAKE_PRIVATE_KEY_PATH to it.
+      - key: SNOWFLAKE_WAREHOUSE
+        value: CLAUSE_WH
+      - key: SNOWFLAKE_DATABASE
+        value: CLAUSE_DB
+      - key: SNOWFLAKE_SCHEMA
+        value: PUBLIC
