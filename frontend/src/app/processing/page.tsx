@@ -70,7 +70,7 @@ const SUB_MESSAGES = [
   "Estimating potential recovery amounts…",
   "Checking for illegal fee structures…",
   "Reviewing notice and termination provisions…",
-  "Almost there — compiling your report…",
+  "Almost there, compiling your report…",
 ];
 
 /* ─── Progress bar with traveling sheen ─────────────────────────────────── */
@@ -102,7 +102,7 @@ function ProgressBar({ progress, failed }: { progress: number; failed: boolean }
             : "0 0 12px rgba(217,119,87,0.45)",
         }}
       >
-        {/* Traveling sheen — only when not failed */}
+        {/* Traveling sheen - only when not failed */}
         {!failed && (
           <div
             aria-hidden
@@ -202,7 +202,7 @@ function PiiNote({ piiCount }: { piiCount: number | null }) {
       <span style={{ fontSize: "12px", color: "#3FA372", letterSpacing: "0.01em" }}>
         {hasCount
           ? `${piiCount} piece${piiCount === 1 ? "" : "s"} of personal information protected`
-          : "Personal information is protected — never stored"}
+          : "Personal information is protected, never stored"}
       </span>
     </div>
   );
@@ -269,7 +269,7 @@ function Processing() {
           return;
         }
       } catch {
-        /* tolerate cold-start blips — continue polling */
+        /* tolerate cold-start blips - continue polling */
       }
       if (active) setTimeout(tick, 1000);
     };
@@ -325,7 +325,7 @@ function Processing() {
           }}
         />
 
-        {/* Subtle inner glow — bottom right */}
+        {/* Subtle inner glow - bottom right */}
         <div
           aria-hidden
           style={{
@@ -379,7 +379,7 @@ function Processing() {
               {message}
             </p>
 
-            {/* Rotating secondary message — only while running */}
+            {/* Rotating secondary message - only while running */}
             {!failed && <SubMessage />}
           </div>
 
@@ -406,7 +406,7 @@ function Processing() {
             </div>
           </div>
 
-          {/* Start over — only on failure so the user is never stranded */}
+          {/* Start over - only on failure so the user is never stranded */}
           {failed && (
             <button
               type="button"
@@ -496,7 +496,7 @@ function Processing() {
         </div>
       </div>
 
-      {/* ── PII note pill — below card ──────────────────────────────────── */}
+      {/* ── PII note pill - below card ──────────────────────────────────── */}
       <PiiNote piiCount={piiCount} />
     </main>
   );

@@ -77,7 +77,7 @@ export default function AnalyzePage() {
           className="enter-2 max-w-xs text-base font-medium leading-relaxed"
           style={{ color: "var(--ink-muted)", letterSpacing: "-0.005em" }}
         >
-          Spot illegal and risky clauses in your rental agreement&nbsp;—
+          Spot illegal and risky clauses in your rental agreement
           in seconds, not hours.
         </p>
       </div>

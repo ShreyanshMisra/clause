@@ -100,7 +100,7 @@ function FloatingDoc({ style }: { style?: React.CSSProperties }) {
       {/* Text lines */}
       <rect x="9" y="13" width="34" height="3.5" rx="1.75" fill="var(--ink-subtle)" opacity="0.3" />
       <rect x="9" y="22" width="26" height="3.5" rx="1.75" fill="var(--ink-subtle)" opacity="0.2" />
-      {/* Flagged line — coral */}
+      {/* Flagged line - coral */}
       <rect x="9" y="31" width="30" height="3.5" rx="1.75" fill="var(--sev-illegal)" opacity="0.5" />
       <rect x="9" y="40" width="18" height="3.5" rx="1.75" fill="var(--ink-subtle)" opacity="0.15" />
       <rect x="9" y="49" width="24" height="3.5" rx="1.75" fill="var(--ink-subtle)" opacity="0.1" />
@@ -163,7 +163,7 @@ export function UploadCard() {
     api.warmup();
   }, []);
 
-  /* file handler — validation + upload flow */
+  /* file handler - validation + upload flow */
   const handle = useCallback(
     async (file: File) => {
       setError(null);
@@ -381,7 +381,7 @@ export function UploadCard() {
               className="mb-5"
               style={{ position: "relative", display: "inline-flex", alignItems: "center", justifyContent: "center" }}
             >
-              {/* Halo — only when not dragging */}
+              {/* Halo - only when not dragging */}
               {!dragging && (
                 <div
                   aria-hidden
@@ -430,7 +430,7 @@ export function UploadCard() {
               {dragging ? "Release to analyse" : "Drop your lease PDF here"}
             </p>
 
-            {/* — or — divider */}
+            {/* - or - divider */}
             <div
               className="my-5 flex w-full items-center gap-4"
               style={{ maxWidth: "280px" }}

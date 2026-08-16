@@ -1,5 +1,5 @@
 /**
- * Backdrop — fixed, z-behind, aria-hidden warm gradient blob layer.
+ * Backdrop - fixed, z-behind, aria-hidden warm gradient blob layer.
  *
  * Three slowly drifting blobs in Clause's coral/terracotta palette create a
  * soft gooey depth effect behind all page content. A grain overlay adds
@@ -14,7 +14,7 @@ export function Backdrop() {
       aria-hidden
       className="fixed inset-0 -z-10 overflow-hidden pointer-events-none select-none"
     >
-      {/* ── Blob 1 — top-left warm coral ─────────────────────────────── */}
+      {/* ── Blob 1 - top-left warm coral ─────────────────────────────── */}
       <div
         className="absolute -top-40 -left-32 h-[32rem] w-[32rem] rounded-full"
         style={{
@@ -27,7 +27,7 @@ export function Backdrop() {
         }}
       />
 
-      {/* ── Blob 2 — right-center terracotta/amber ───────────────────── */}
+      {/* ── Blob 2 - right-center terracotta/amber ───────────────────── */}
       <div
         className="absolute top-1/3 -right-28 h-[36rem] w-[36rem] rounded-full"
         style={{
@@ -40,7 +40,7 @@ export function Backdrop() {
         }}
       />
 
-      {/* ── Blob 3 — bottom-center cream highlight ───────────────────── */}
+      {/* ── Blob 3 - bottom-center cream highlight ───────────────────── */}
       <div
         className="absolute -bottom-24 left-1/4 h-[28rem] w-[42rem] rounded-full"
         style={{

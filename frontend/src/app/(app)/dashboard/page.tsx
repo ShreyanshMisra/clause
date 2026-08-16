@@ -20,7 +20,7 @@ function timeAgo(seconds: number): string {
 }
 
 function CaseCard({ c, i }: { c: CaseSummary; i: number }) {
-  const risk = c.overall_risk ?? "—";
+  const risk = c.overall_risk ?? "-";
   const color = RISK_COLOR[risk] ?? "var(--ink-subtle)";
   const done = c.status === "completed";
   const href = done ? `/results/${c.id}` : `/processing?file_id=${c.id}`;
