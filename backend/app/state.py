@@ -1,5 +1,6 @@
 import os, tempfile
 from app.jobs import JobRegistry
+from app.models import AnalysisResult, Metadata
 from app.vector_store import get_vector_store
 from app.llm_service import LLMService
 import app.db as db
@@ -13,10 +14,10 @@ llm: LLMService | None = None  # generation LLM (Gemini); set on startup or by t
 embedder = None                 # retrieval embedder (Cortex in snowflake mode, Gemini in local)
 seeded: bool = False
 
-results: dict[str, object] = {}          # file_id -> AnalysisResult
+results: dict[str, AnalysisResult] = {}    # file_id -> AnalysisResult
 redacted_text: dict[str, str] = {}        # file_id -> redacted text
 redacted_pages: dict[str, list[str]] = {}  # file_id -> per-page redacted text
-metadata_store: dict[str, object] = {}    # file_id -> Metadata
+metadata_store: dict[str, Metadata] = {}   # file_id -> Metadata
 
 def pdf_path(file_id: str) -> str:
     """Persistent location for an uploaded PDF (survives restarts so

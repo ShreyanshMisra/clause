@@ -1,33 +1,33 @@
 "use client";
 
 // Accounts are email + password. On login the backend returns a signed session
-// token; we keep it (plus the email, for display) in localStorage and send the
-// token as `Authorization: Bearer <token>` on every request.
+// token, which we keep (with the email, for display) in module memory only —
+// never in localStorage — so an injected/XSS script can't read a persisted
+// token. Requests send it as `Authorization: Bearer <token>`. The tradeoff: a
+// full page refresh drops the in-memory session, so the user signs in again.
 
-const EMAIL_KEY = "clause.email";
-const TOKEN_KEY = "clause.token";
+let _token: string | null = null;
+let _email: string | null = null;
 
 export function getUser(): string | null {
-  if (typeof window === "undefined") return null;
-  return window.localStorage.getItem(EMAIL_KEY);
+  return _email;
 }
 
 export function getToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return window.localStorage.getItem(TOKEN_KEY);
+  return _token;
 }
 
 export function setSession(email: string, token: string): void {
-  window.localStorage.setItem(EMAIL_KEY, email);
-  window.localStorage.setItem(TOKEN_KEY, token);
+  _email = email;
+  _token = token;
   // Let other tabs / the shell react to sign-in/out.
-  window.dispatchEvent(new Event("clause:auth"));
+  if (typeof window !== "undefined") window.dispatchEvent(new Event("clause:auth"));
 }
 
 export function clearUser(): void {
-  window.localStorage.removeItem(EMAIL_KEY);
-  window.localStorage.removeItem(TOKEN_KEY);
-  window.dispatchEvent(new Event("clause:auth"));
+  _email = null;
+  _token = null;
+  if (typeof window !== "undefined") window.dispatchEvent(new Event("clause:auth"));
 }
 
 export function isValidEmail(email: string): boolean {

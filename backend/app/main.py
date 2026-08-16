@@ -1,11 +1,12 @@
 import os, uuid
+from contextlib import asynccontextmanager
 from pathlib import Path
 from dotenv import load_dotenv
 
 # Load backend/.env before any module reads env (VECTOR_BACKEND, GEMINI_API_KEY, etc.).
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
-from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks, Header
+from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel
@@ -18,13 +19,8 @@ from app.pdf_service import extract_pages
 from app.pii_service import redact
 from app.analysis import analyze_document
 from app.letter_service import render_letter_pdf
+from app.ratelimit import SlidingWindowLimiter
 
-app = FastAPI(title="Clause Lite")
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=os.environ.get("ALLOWED_ORIGINS", "http://localhost:3000").split(","),
-    allow_credentials=True, allow_methods=["*"], allow_headers=["*"],
-)
 
 def _build_services():
     """Build the generation LLM (Gemini) and the retrieval embedder
@@ -36,17 +32,23 @@ def _build_services():
     embedder = get_embedder()
     return llm, embedder
 
-@app.on_event("startup")
-def _init_db():
-    db.init()
 
-@app.on_event("startup")
-def _init_llm():
+def _llm():
+    """Return the generation LLM, building it lazily if startup init was skipped
+    (e.g. the model/key wasn't ready at boot). Guarantees a non-None service."""
+    if state.llm is None:
+        state.llm, state.embedder = _build_services()
+    return state.llm
+
+
+def _init_services() -> None:
+    """Build the LLM/embedder and seed statutes; tolerate failures so the app
+    still boots and retries lazily on the first request."""
+    import logging
     if state.llm is None:
         try:
             state.llm, state.embedder = _build_services()
         except Exception as exc:
-            import logging
             logging.warning("Service init failed at startup: %s — will retry on first request", exc)
             return
     try:
@@ -54,8 +56,28 @@ def _init_llm():
         seed_local_if_needed(state.vector_store, state.embedder)
         state.seeded = True
     except Exception as exc:
-        import logging
         logging.warning("Statute seeding failed at startup: %s — will retry on first analysis", exc)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    db.init()
+    _init_services()
+    yield
+
+
+app = FastAPI(title="Clause Lite", lifespan=lifespan)
+# Auth is a Bearer token (not a cookie), so credentials aren't needed; keeping
+# them off lets us pin an explicit origin list and a minimal method/header set.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[o.strip() for o in
+                   os.environ.get("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
+                   if o.strip()],
+    allow_credentials=False,
+    allow_methods=["GET", "POST"],
+    allow_headers=["Authorization", "Content-Type"],
+)
 
 @app.get("/health")
 def health():
@@ -63,6 +85,15 @@ def health():
 
 # ── Accounts ───────────────────────────────────────────────────────────────
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+# Brute-force guards: lock a targeted account after a few bad passwords, and cap
+# failures from a single IP to blunt credential spraying. Both count *failures*
+# only (a successful login clears them), so ordinary use never trips them.
+_LOGIN_WINDOW = float(os.environ.get("LOGIN_LOCKOUT_WINDOW", 15 * 60))
+_email_throttle = SlidingWindowLimiter(
+    max_events=int(os.environ.get("LOGIN_MAX_FAILS_PER_EMAIL", 5)), window_seconds=_LOGIN_WINDOW)
+_ip_throttle = SlidingWindowLimiter(
+    max_events=int(os.environ.get("LOGIN_MAX_FAILS_PER_IP", 20)), window_seconds=_LOGIN_WINDOW)
 
 def _norm_email(email: Optional[str]) -> Optional[str]:
     if not email:
@@ -74,8 +105,17 @@ class LoginBody(BaseModel):
     email: str
     password: str
 
+def _throttle_guard(email: str, ip: str) -> None:
+    """Reject the request early if this account or IP is currently locked out."""
+    for key, limiter in ((email, _email_throttle), (ip, _ip_throttle)):
+        wait = limiter.retry_after(key)
+        if wait > 0:
+            raise HTTPException(429, "Too many failed attempts. Try again later.",
+                                headers={"Retry-After": str(int(wait) + 1)})
+
+
 @app.post("/login")
-def login(body: LoginBody):
+def login(body: LoginBody, request: Request):
     """Email + password accounts. The first login for an email registers it;
     subsequent logins verify the password. Returns a signed session token that
     later requests present as `Authorization: Bearer <token>`."""
@@ -84,13 +124,20 @@ def login(body: LoginBody):
         raise HTTPException(400, "Enter a valid email address")
     if len(body.password) < 8:
         raise HTTPException(400, "Password must be at least 8 characters")
+    ip = request.client.host if request.client else "unknown"
+    _throttle_guard(email, ip)
     user = db.get_user(email)
     if user is None:
         db.create_user(email, security.hash_password(body.password))  # register
     elif not user.get("password_hash") or not security.verify_password(
         body.password, user["password_hash"]
     ):
+        _email_throttle.record(email)
+        _ip_throttle.record(ip)
         raise HTTPException(401, "Incorrect password")
+    # Clean login: forgive earlier stray failures for this account/IP.
+    _email_throttle.reset(email)
+    _ip_throttle.reset(ip)
     return {"email": email, "token": security.sign_token(email)}
 
 @app.get("/cases")
@@ -150,7 +197,7 @@ def extract_metadata(body: FileIdBody):
     text = state.redacted_text.get(body.file_id)
     if text is None:
         raise HTTPException(404, "Unknown file_id")
-    md = state.llm.extract_metadata(text)
+    md = _llm().extract_metadata(text)
     state.metadata_store[body.file_id] = md
     state.registry.update(body.file_id, status="metadata_extracted", message="Metadata extracted")
     return {"file_id": body.file_id, "status": "metadata_extracted", "metadata": md.model_dump()}
@@ -241,7 +288,7 @@ def demand_letter(body: DemandLetterBody, authorization: Optional[str] = Header(
                            explanation=h.explanation, damages_estimate=h.damages_estimate)
               for h in result.highlights]
     md = state.metadata_store.get(body.file_id) or result.documentMetadata
-    body_html = state.llm.draft_demand_letter(drafts, md, body.sender, body.recipient)
+    body_html = _llm().draft_demand_letter(drafts, md, body.sender, body.recipient)
     pdf_bytes = render_letter_pdf(body_html, title="Demand Letter")
     return Response(content=pdf_bytes, media_type="application/pdf",
                     headers={"Content-Disposition": "attachment; filename=demand-letter.pdf"})

@@ -1,6 +1,5 @@
 from app.highlight import build_highlight, color_for
 from app.llm_service import FindingDraft
-from app.models import Severity
 from pathlib import Path
 
 FIX = str(Path(__file__).parent / "fixtures" / "sample-lease.pdf")

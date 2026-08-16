@@ -53,6 +53,19 @@ def test_login_wrong_password_rejected():
         assert r.status_code == 401
 
 
+def test_login_locks_out_after_repeated_bad_passwords():
+    with TestClient(app) as client:
+        email = "lockme@example.com"
+        client.post("/login", json={"email": email, "password": PW})  # register
+        # Five wrong passwords are rejected as 401; the sixth is throttled.
+        for _ in range(5):
+            r = client.post("/login", json={"email": email, "password": "wrongpass1"})
+            assert r.status_code == 401
+        blocked = client.post("/login", json={"email": email, "password": "wrongpass1"})
+        assert blocked.status_code == 429
+        assert blocked.headers.get("Retry-After")
+
+
 def test_cases_requires_valid_token():
     with TestClient(app) as client:
         assert client.get("/cases").status_code == 401

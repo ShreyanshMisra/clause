@@ -1,0 +1,19 @@
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "B"]
+# E402/E401: main.py deliberately loads .env before imports and groups stdlib
+# imports on one line. E501: long lines live in LLM prompts and doc comments.
+# E702: the models/tests use compact one-line field and fake-client declarations.
+# B008: FastAPI's `= File(...)` / `= Header(...)` defaults are the framework idiom.
+ignore = ["E402", "E401", "E501", "E702", "B008"]
+
+[tool.mypy]
+python_version = "3.13"
+# Pragmatic baseline: type-check our own code without drowning in third-party
+# stub gaps or the dynamically-typed LLM/JSON payloads we intentionally use.
+ignore_missing_imports = true
+check_untyped_defs = true
+warn_unused_ignores = false

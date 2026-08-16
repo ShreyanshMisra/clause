@@ -1,7 +1,7 @@
 from __future__ import annotations
 import math
-from dataclasses import dataclass, field
-from typing import Optional, Protocol
+from dataclasses import dataclass
+from typing import Any, Callable, Optional, Protocol
 
 @dataclass
 class Statute:
@@ -17,7 +17,7 @@ class VectorStore(Protocol):
     def search(self, embedding: list[float], k: int) -> list[Statute]: ...
 
 def _cosine(a: list[float], b: list[float]) -> float:
-    dot = sum(x * y for x, y in zip(a, b))
+    dot = sum(x * y for x, y in zip(a, b, strict=False))
     na = math.sqrt(sum(x * x for x in a))
     nb = math.sqrt(sum(y * y for y in b))
     return dot / (na * nb) if na and nb else 0.0
@@ -40,11 +40,10 @@ class LocalVectorStore:
 
 
 import os
-from typing import Callable
 
 
 class SnowflakeVectorStore:
-    def __init__(self, conn_factory: Callable[[], object], dim: int = 768,
+    def __init__(self, conn_factory: Callable[[], Any], dim: int = 768,
                  table: str = "STATUTES") -> None:
         self._conn_factory = conn_factory
         self._dim = dim
@@ -124,10 +123,10 @@ class CortexEmbedder:
     can drive retrieval without an external embedding API. One connection is cached
     and reused across calls (a document produces one embed per page)."""
 
-    def __init__(self, conn_factory: Callable[[], object], model: Optional[str] = None) -> None:
+    def __init__(self, conn_factory: Callable[[], Any], model: Optional[str] = None) -> None:
         self._conn_factory = conn_factory
         self._model = model or os.environ.get("CORTEX_EMBED_MODEL", "snowflake-arctic-embed-m-v1.5")
-        self._conn = None
+        self._conn: Any = None
 
     def _cursor(self):
         if self._conn is None:

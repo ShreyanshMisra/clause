@@ -26,6 +26,8 @@ class GeminiClient:
         return cls(model=model, embed_fn=embed_fn)
 
     def embed(self, text: str) -> list:
+        if self._embed_fn is None:
+            raise RuntimeError("GeminiClient has no embedder; build it via from_env()")
         return self._embed_fn(text)
 
     def _generate(self, prompt: str) -> str:

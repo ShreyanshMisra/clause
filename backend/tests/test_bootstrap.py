@@ -1,5 +1,3 @@
-import os
-import app.state as state
 from app.bootstrap import seed_local_if_needed
 from app.vector_store import LocalVectorStore
 

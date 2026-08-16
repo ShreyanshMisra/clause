@@ -1,5 +1,6 @@
 import re
 from dataclasses import dataclass, field
+from typing import Any
 
 @dataclass
 class RedactionResult:
@@ -46,9 +47,9 @@ _ALLOWLIST = {
 def _allowed(span: str) -> bool:
     return span.strip().strip(".,'’").rstrip("s").lower() in _ALLOWLIST or span.strip().lower() in _ALLOWLIST
 
-_analyzer = None
-_anonymizer = None
-_operators = None
+_analyzer: Any = None
+_anonymizer: Any = None
+_operators: Any = None
 _ner_unavailable = False
 
 

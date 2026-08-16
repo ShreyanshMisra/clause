@@ -1,3 +1,5 @@
+import { getToken } from "./auth";
+
 export const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export interface UploadResponse {
@@ -34,10 +36,10 @@ export interface CaseSummary {
   estimated_recovery: string | null;
 }
 
-// The signed session token travels as a Bearer header on every request.
+// The signed session token (held in memory, see lib/auth) travels as a Bearer
+// header on every request.
 function authHeaders(): Record<string, string> {
-  if (typeof window === "undefined") return {};
-  const token = window.localStorage.getItem("clause.token");
+  const token = getToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
