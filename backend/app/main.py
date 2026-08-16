@@ -114,6 +114,33 @@ def _throttle_guard(email: str, ip: str) -> None:
                                 headers={"Retry-After": str(int(wait) + 1)})
 
 
+# Abuse/cost guard for the expensive routes. Unlike login (which counts only
+# failures), these count *every* call per client IP, because each upload burns
+# disk and each analyze/metadata/letter call spends real LLM budget — so an
+# anonymous loop could otherwise drain the quota. Limits are generous enough for
+# ordinary interactive use and configurable via env for tuning per deploy.
+_COST_WINDOW = float(os.environ.get("COST_RATE_WINDOW", 60 * 60))
+_upload_throttle = SlidingWindowLimiter(
+    max_events=int(os.environ.get("UPLOAD_MAX_PER_WINDOW", 50)), window_seconds=_COST_WINDOW)
+_analyze_throttle = SlidingWindowLimiter(
+    max_events=int(os.environ.get("ANALYZE_MAX_PER_WINDOW", 50)), window_seconds=_COST_WINDOW)
+_letter_throttle = SlidingWindowLimiter(
+    max_events=int(os.environ.get("LETTER_MAX_PER_WINDOW", 30)), window_seconds=_COST_WINDOW)
+
+
+def _client_ip(request: Request) -> str:
+    return request.client.host if request.client else "unknown"
+
+
+def _cost_guard(limiter: SlidingWindowLimiter, ip: str, what: str) -> None:
+    """Reject and record one call against a per-IP budget for an expensive route."""
+    wait = limiter.retry_after(ip)
+    if wait > 0:
+        raise HTTPException(429, f"Too many {what}. Try again later.",
+                            headers={"Retry-After": str(int(wait) + 1)})
+    limiter.record(ip)
+
+
 @app.post("/login")
 def login(body: LoginBody, request: Request):
     """Email + password accounts. The first login for an email registers it;
@@ -160,10 +187,11 @@ def _authorize_case(file_id: str, authorization: Optional[str]) -> None:
         raise HTTPException(404, "Unknown file_id")
 
 @app.post("/upload")
-async def upload(file: UploadFile = File(...),
+async def upload(request: Request, file: UploadFile = File(...),
                  authorization: Optional[str] = Header(default=None)):
     if not (file.filename or "").lower().endswith(".pdf"):
         raise HTTPException(400, "Only PDF files are accepted")
+    _cost_guard(_upload_throttle, _client_ip(request), "uploads")
     data = await file.read()
     if len(data) > 10 * 1024 * 1024:
         raise HTTPException(400, "File exceeds 10MB")
@@ -193,7 +221,10 @@ class FileIdBody(BaseModel):
     file_id: str
 
 @app.post("/extract-metadata")
-def extract_metadata(body: FileIdBody):
+def extract_metadata(body: FileIdBody, request: Request,
+                     authorization: Optional[str] = Header(default=None)):
+    _authorize_case(body.file_id, authorization)
+    _cost_guard(_analyze_throttle, _client_ip(request), "requests")
     text = state.redacted_text.get(body.file_id)
     if text is None:
         raise HTTPException(404, "Unknown file_id")
@@ -225,7 +256,10 @@ def _run_analysis(file_id: str):
     db.save_result(file_id, result.model_dump())
 
 @app.post("/analyze")
-def analyze(body: FileIdBody, background: BackgroundTasks):
+def analyze(body: FileIdBody, background: BackgroundTasks, request: Request,
+            authorization: Optional[str] = Header(default=None)):
+    _authorize_case(body.file_id, authorization)
+    _cost_guard(_analyze_throttle, _client_ip(request), "analysis requests")
     if body.file_id not in state.redacted_text:
         raise HTTPException(404, "Unknown file_id")
     state.registry.update(body.file_id, status="processing", progress=10, message="Starting analysis...")
@@ -273,8 +307,10 @@ class DemandLetterBody(BaseModel):
     recipient: dict = {}
 
 @app.post("/demand-letter")
-def demand_letter(body: DemandLetterBody, authorization: Optional[str] = Header(default=None)):
+def demand_letter(body: DemandLetterBody, request: Request,
+                  authorization: Optional[str] = Header(default=None)):
     _authorize_case(body.file_id, authorization)
+    _cost_guard(_letter_throttle, _client_ip(request), "letter requests")
     result = state.results.get(body.file_id)
     if result is None:
         stored = db.get_result(body.file_id)  # persisted case

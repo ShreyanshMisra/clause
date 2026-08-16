@@ -1,11 +1,22 @@
 version: 2
 updates:
-  # Backend Python dependencies
+  # Backend Python dependencies — bundled into grouped PRs so a weekly batch of
+  # bumps doesn't open a dozen separate pull requests (the noise we just hit).
   - package-ecosystem: pip
     directory: /backend
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    groups:
+      backend-minor-patch:
+        # Everyday minor/patch bumps travel together in one PR.
+        update-types:
+          - minor
+          - patch
+      backend-major:
+        # Majors can be breaking, so group them separately for a focused review.
+        update-types:
+          - major
 
   # Frontend npm dependencies
   - package-ecosystem: npm
@@ -13,9 +24,22 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    groups:
+      frontend-minor-patch:
+        update-types:
+          - minor
+          - patch
+      frontend-major:
+        update-types:
+          - major
 
-  # GitHub Actions used in CI
+  # GitHub Actions used in CI — all action bumps in a single PR.
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      actions:
+        patterns:
+          - "*"

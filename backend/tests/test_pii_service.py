@@ -29,3 +29,19 @@ def test_no_structured_pii_keeps_clause_text():
     assert result.summary.get("EMAIL") is None
     assert result.summary.get("PHONE") is None
     assert "shall pay rent" in result.redacted_text
+
+
+def test_redaction_recall_on_mixed_structured_pii():
+    """Recall eval: every structured PII item in a realistic sentence must be
+    stripped (regex layer only, so this runs even without the NER engine)."""
+    text = (
+        "Payment by card 4111 1111 1111 1111 or SSN 123-45-6789; reach "
+        "jane.doe@example.com or (415) 555-0100; mail to 16 New Ocean Street, "
+        "Boston, MA 02139 or P.O. Box 4512."
+    )
+    result = redact(text)
+    for leaked in ("4111 1111 1111 1111", "123-45-6789", "jane.doe@example.com",
+                   "555-0100", "New Ocean Street", "02139", "P.O. Box 4512"):
+        assert leaked not in result.redacted_text, f"{leaked!r} leaked through redaction"
+    for kind in ("CREDIT_CARD", "SSN", "EMAIL", "PHONE", "ADDRESS", "PO_BOX"):
+        assert result.summary.get(kind, 0) >= 1, f"expected a {kind} redaction"

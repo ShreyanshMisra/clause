@@ -80,7 +80,7 @@ def test_uploaded_case_appears_in_user_dashboard():
             up = client.post("/upload", headers=hdr,
                              files={"file": ("lease.pdf", f, "application/pdf")})
         fid = up.json()["file_id"]
-        client.post("/analyze", json={"file_id": fid})
+        client.post("/analyze", headers=hdr, json={"file_id": fid})
 
         cases = client.get("/cases", headers=hdr).json()["cases"]
         case = next(c for c in cases if c["id"] == fid)
@@ -105,7 +105,7 @@ def test_owned_case_endpoints_reject_other_users():
         with open(FIX, "rb") as f:
             fid = client.post("/upload", headers=owner,
                               files={"file": ("l.pdf", f, "application/pdf")}).json()["file_id"]
-        client.post("/analyze", json={"file_id": fid})
+        client.post("/analyze", headers=owner, json={"file_id": fid})
 
         # Owner can read their own case + PDF.
         assert client.get(f"/document/{fid}", headers=owner).status_code == 200
@@ -118,6 +118,11 @@ def test_owned_case_endpoints_reject_other_users():
             assert client.get(f"/pdf/{fid}", headers=hdr).status_code == 404
             assert client.get(f"/status/{fid}", headers=hdr).status_code == 404
             assert client.post("/demand-letter", headers=hdr,
+                               json={"file_id": fid}).status_code == 404
+            # Expensive, owner-scoped mutations are equally off-limits (IDOR guard).
+            assert client.post("/analyze", headers=hdr,
+                               json={"file_id": fid}).status_code == 404
+            assert client.post("/extract-metadata", headers=hdr,
                                json={"file_id": fid}).status_code == 404
 
 

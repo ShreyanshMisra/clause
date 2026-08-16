@@ -1,3 +1,4 @@
+import os
 import re
 from dataclasses import dataclass, field
 from typing import Any
@@ -9,18 +10,30 @@ class RedactionResult:
 
 
 # Regex layer: catches structured PII (and street addresses, which Presidio's default
-# recognizers miss). Runs after NER to sweep anything the model didn't catch.
+# recognizers miss). Runs before NER so full addresses/cards get a precise label first.
+# Order matters: multi-field patterns (CREDIT_CARD, ADDRESS) run before the narrower
+# PHONE/number patterns so they aren't chopped into partial matches.
 _REGEX = {
+    "CREDIT_CARD": re.compile(r"\b(?:\d[ -]?){13,16}\b"),
+    "SSN": re.compile(r"\b\d{3}-\d{2}-\d{4}\b"),
     "EMAIL": re.compile(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"),
     "PHONE": re.compile(r"\b(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b"),
-    "SSN": re.compile(r"\b\d{3}-\d{2}-\d{4}\b"),
     "ADDRESS": re.compile(
         r"\b\d{1,6}\s+(?:[A-Za-z0-9.'-]+\s+){0,4}"
         r"(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Lane|Ln|Drive|Dr|Court|Ct|"
-        r"Way|Place|Pl|Terrace|Ter|Circle|Cir|Highway|Hwy)\b\.?",
+        r"Way|Place|Pl|Terrace|Ter|Circle|Cir|Highway|Hwy)\b\.?"
+        # Optional unit and city/state/ZIP tail so a full mailing address is one span.
+        r"(?:\s*,?\s*(?:Apt|Apartment|Unit|Suite|Ste|Rm|Room|#)\s*\.?\s*[A-Za-z0-9-]+)?"
+        r"(?:\s*,\s*[A-Za-z .'-]+,\s*[A-Z]{2}\s+\d{5}(?:-\d{4})?)?",
         re.IGNORECASE,
     ),
+    "PO_BOX": re.compile(r"\bP\.?\s*O\.?\s*Box\s+\d+\b", re.IGNORECASE),
 }
+
+# NER confidence floor. For a privacy tool, recall matters more than precision
+# (over-redaction is safe; a leak is not), so the default leans permissive and the
+# lease-term allowlist below rescues the common false positives. Tune via env.
+_NER_SCORE_THRESHOLD = float(os.environ.get("PII_NER_SCORE_THRESHOLD", 0.35))
 
 # Presidio NER entity -> placeholder label shown to the user.
 _ENTITY_PLACEHOLDER = {
@@ -108,7 +121,8 @@ def redact(text: str) -> RedactionResult:
     analyzer = _get_ner()
     if analyzer is not None:
         results = analyzer.analyze(text=out, entities=_NER_ENTITIES, language="en")
-        results = [r for r in results if r.score >= 0.4 and not _allowed(out[r.start:r.end])]
+        results = [r for r in results
+                   if r.score >= _NER_SCORE_THRESHOLD and not _allowed(out[r.start:r.end])]
         if results:
             anon = _anonymizer.anonymize(text=out, analyzer_results=results, operators=_operators)
             out = anon.text
