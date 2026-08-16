@@ -39,7 +39,7 @@ const KEYFRAMES = `
 const ROW = 60; // px height of each liquid pill
 const GAP = 12; // px gap between the two pills
 
-/* One liquid pill background — coral, brightens on focus. */
+/* One liquid pill background - coral, brightens on focus. */
 function FieldBlob({ top, focused }: { top: number; focused: boolean }) {
   return (
     <div
@@ -139,7 +139,7 @@ export function GooeyAuthForm({
           <FieldBlob top={0} focused={focused === "email"} />
           <FieldBlob top={passwordTop} focused={focused === "password"} />
 
-          {/* Submit blob — on the password row, overlapping its right end */}
+          {/* Submit blob - on the password row, overlapping its right end */}
           <div
             style={{
               position: "absolute",
@@ -152,7 +152,7 @@ export function GooeyAuthForm({
               animation: "gooBtnBreath 3s ease-in-out infinite",
             }}
           />
-          {/* Emitted droplets — merge back into the blob */}
+          {/* Emitted droplets - merge back into the blob */}
           {[0, 1, 2].map((i) => (
             <span
               key={i}

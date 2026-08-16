@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 
 /* Pixel-grid "churning" loader: a diagonal shimmer wave sweeps across a grid of
    cells while an elapsed-time counter ticks. Inspired by the churning loader on
-   beautifului.dev — a good fit for signalling active AI work. */
+   beautifului.dev - a good fit for signalling active AI work. */
 
 const COLS = 7;
 const ROWS = 7;

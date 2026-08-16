@@ -9,8 +9,11 @@ _RISK_ORDER = {Severity.illegal: 3, Severity.high: 2, Severity.medium: 1, Severi
 _RISK_LABEL = {3: "Critical", 2: "High", 1: "Medium", 0: "Low"}
 
 # Pages analyzed per LLM call. Grouping cuts request count (e.g. 16 pages / 4 = 4 calls
-# instead of 16) to stay under free-tier daily quotas; page markers keep highlights accurate.
-_PAGE_GROUP = max(1, int(os.environ.get("ANALYSIS_PAGE_GROUP", "2")))
+# instead of 8) which also cuts the number of embed round-trips — the main cost in
+# Cortex mode — so larger groups analyze faster. Page markers keep highlights accurate.
+# Tunable via ANALYSIS_PAGE_GROUP (4-6 is a good range); higher trades retrieval
+# precision (one embedding per group) for speed.
+_PAGE_GROUP = max(1, int(os.environ.get("ANALYSIS_PAGE_GROUP", "4")))
 
 def analyze_document(file_id: str, pdf_path: str, redacted_pages: list[str],
                      llm: LLMService, embedder, store: VectorStore, registry: JobRegistry,
@@ -37,7 +40,10 @@ def analyze_document(file_id: str, pdf_path: str, redacted_pages: list[str],
             # Resilience: a transient per-chunk failure (timeout/rate-limit) skips that
             # chunk instead of failing the whole document — partial results beat none.
             try:
-                statutes = store.search(embedder.embed(marked), k=top_k)
+                # Scale retrieval with the group size: one embedding now represents
+                # several pages, so pull more statute candidates to keep recall up.
+                k = max(top_k, 2 * len(group))
+                statutes = store.search(embedder.embed(marked), k=k)
                 drafts.extend(llm.analyze_chunk(marked, statutes, page_hint=first))
             except Exception as e:  # noqa: BLE001
                 errors += 1

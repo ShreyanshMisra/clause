@@ -80,7 +80,12 @@ function findingToHighlight(f: Finding): IHighlight | null {
     pageNumber: page,
     boundingRect,
     rects,
-    usePdfCoordinates: true,
+    // Coordinates come from PyMuPDF, whose origin is top-left (y grows downward)
+    // and are page-relative (width/height = page size). That is exactly the
+    // proportional model react-pdf-highlighter uses when usePdfCoordinates is
+    // false. Setting it true would route through pdfjs convertToViewportRectangle,
+    // which expects PDF-native bottom-left coordinates and flips every box vertically.
+    usePdfCoordinates: false,
   };
 
   return {
