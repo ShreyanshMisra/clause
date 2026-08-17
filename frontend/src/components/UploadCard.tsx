@@ -179,7 +179,12 @@ export function UploadCard() {
       try {
         const res = await api.upload(file);
         sessionStorage.setItem("pii", JSON.stringify(res.pii_redacted));
-        await api.analyze(res.file_id);
+        // Extract lease metadata (parties/rent/deposit) and kick off analysis in
+        // parallel — metadata feeds the damages calculator and the demand letter.
+        await Promise.all([
+          api.extractMetadata(res.file_id).catch(() => {}),
+          api.analyze(res.file_id),
+        ]);
         router.push(`/processing?file_id=${res.file_id}`);
       } catch (e) {
         setError((e as Error).message);

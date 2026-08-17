@@ -35,6 +35,33 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
+function MetaField({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0">
+      <p className="text-[10px] uppercase tracking-wide text-[var(--ink-subtle)]">{label}</p>
+      <p className="truncate text-sm font-medium text-[var(--ink)]" title={value}>{value || "—"}</p>
+    </div>
+  );
+}
+
+function MetaBar({ meta }: { meta: AnalysisResult["documentMetadata"] }) {
+  const p = meta?.parties;
+  // Only render once the model has filled in at least one field.
+  const hasAny = !!(p?.landlord || p?.tenant || p?.property || meta?.monthlyRent ||
+    meta?.leaseTerm || meta?.securityDeposit);
+  if (!hasAny) return null;
+  return (
+    <section className="mb-6 grid grid-cols-2 gap-4 rounded-2xl bg-[var(--surface)]/60 p-4 backdrop-blur-sm border border-white/40 sm:grid-cols-3 lg:grid-cols-6">
+      <MetaField label="Landlord" value={p?.landlord ?? ""} />
+      <MetaField label="Tenant" value={p?.tenant ?? ""} />
+      <MetaField label="Property" value={p?.property ?? ""} />
+      <MetaField label="Monthly rent" value={meta?.monthlyRent ?? ""} />
+      <MetaField label="Lease term" value={meta?.leaseTerm ?? ""} />
+      <MetaField label="Security deposit" value={meta?.securityDeposit ?? ""} />
+    </section>
+  );
+}
+
 export default function Results() {
   const { id } = useParams<{ id: string }>();
   const [data, setData] = useState<AnalysisResult | null>(null);
@@ -126,6 +153,9 @@ export default function Results() {
           Generate demand letter
         </button>
       </header>
+
+      {/* Document metadata (parties / rent / term / deposit) */}
+      <MetaBar meta={data.documentMetadata} />
 
       {/* Split view */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.4fr_1fr]">

@@ -19,6 +19,8 @@ export interface Finding {
   id: string; page: number; quoted_text: string; category: string;
   severity: string; color: string; statute_citation: string | null;
   explanation: string; damages_estimate: number | null; position: HighlightPosition | null;
+  legal_reasoning?: string; severity_rationale?: string; recommended_action?: string;
+  confidence?: number; statute_quote?: string; damages_basis?: string;
 }
 export interface AnalysisResult {
   documentId: string;
@@ -64,6 +66,10 @@ export const api = {
   analyze: (file_id: string) =>
     req<{ status: string }>("/analyze", { method: "POST",
       headers: { "Content-Type": "application/json" }, body: JSON.stringify({ file_id }) }),
+  extractMetadata: (file_id: string) =>
+    req<{ status: string; metadata: AnalysisResult["documentMetadata"] }>("/extract-metadata", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ file_id }) }),
   status: (file_id: string) => req<StatusResponse>(`/status/${file_id}`),
   document: (file_id: string) => req<AnalysisResult>(`/document/${file_id}`),
   // The PDF is owner-scoped, so it can't be a plain <embed> URL (pdf.js can't
