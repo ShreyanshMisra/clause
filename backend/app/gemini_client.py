@@ -42,16 +42,25 @@ class GeminiClient:
             raise RuntimeError("GeminiClient has no embedder; build it via from_env()")
         return self._embed_fn(text)
 
-    def _generate(self, prompt: str) -> str:
+    def _generate(self, prompt: str, generation_config: Optional[dict] = None) -> str:
+        config = {"temperature": _TEMPERATURE}
+        if generation_config:
+            config.update(generation_config)
         resp = self._model.generate_content(
             prompt,
-            generation_config={"temperature": _TEMPERATURE},
+            generation_config=config,
             request_options={"timeout": _TIMEOUT},
         )
         return resp.text or ""
 
-    def generate_json(self, prompt: str) -> dict:
-        raw = self._generate(prompt)
+    def generate_json(self, prompt: str, schema: Optional[dict] = None) -> dict:
+        """Generate JSON. When `schema` is given, ask the model for schema-constrained
+        JSON output; always fall back to parsing a fenced/raw JSON block so models or
+        paths that ignore the schema still work."""
+        config: Optional[dict] = None
+        if schema is not None:
+            config = {"response_mime_type": "application/json", "response_schema": schema}
+        raw = self._generate(prompt, config)
         m = _FENCE.search(raw)
         candidate = m.group(1) if m else raw.strip()
         try:
