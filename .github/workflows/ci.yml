@@ -22,11 +22,24 @@ jobs:
           cache-dependency-path: backend/requirements.txt
 
       # WeasyPrint (imported via letter_service) needs Pango/cairo at import time.
+      # Each apt call is bounded by `timeout` and retried, so a hung/slow apt
+      # mirror fails fast and retries instead of stalling the job for ~30 min.
       - name: Install system libraries for WeasyPrint
+        env:
+          DEBIAN_FRONTEND: noninteractive
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libpango-1.0-0 libpangocairo-1.0-0 \
-            libgdk-pixbuf-2.0-0 libffi-dev libcairo2
+          set -x
+          for i in 1 2 3; do
+            timeout 180 sudo -E apt-get update -o Acquire::Retries=3 \
+              && timeout 300 sudo -E apt-get install -y --no-install-recommends \
+                   libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf-2.0-0 \
+                   libffi-dev libcairo2 \
+              && exit 0
+            echo "apt attempt $i failed or timed out; retrying in 5s..."
+            sleep 5
+          done
+          echo "apt install failed after 3 attempts" >&2
+          exit 1
 
       - name: Install dependencies
         run: pip install -r requirements.txt ruff==0.16.3 mypy==2.3.1
