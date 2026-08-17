@@ -57,6 +57,13 @@ def _init_services() -> None:
         state.seeded = True
     except Exception as exc:
         logging.warning("Statute seeding failed at startup: %s — will retry on first analysis", exc)
+    # Warm the spaCy/Presidio NER model now so the first upload doesn't eat the
+    # multi-second model load. Best-effort: redaction falls back to regex if absent.
+    try:
+        from app.pii_service import _get_ner
+        _get_ner()
+    except Exception as exc:
+        logging.warning("NER warmup skipped: %s", exc)
     # Optional second PII layer on the fast model (see app.pii_llm). Off unless
     # PII_LLM_ASSIST is set; tolerate a missing key so the app still boots.
     if os.environ.get("PII_LLM_ASSIST", "").lower() in ("1", "true", "yes", "on"):
