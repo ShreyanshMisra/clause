@@ -177,6 +177,7 @@ async def upload(file: UploadFile = File(...),
         raise HTTPException(400, "Document exceeds 20 pages for this demo")
     page_redactions = [redact(p.text) for p in pages]
     state.redacted_pages[file_id] = [r.redacted_text for r in page_redactions]
+    state.redaction_spans[file_id] = [r.spans for r in page_redactions]
     state.redacted_text[file_id] = "\n".join(r.redacted_text for r in page_redactions)
     summary: dict[str, int] = {}
     for r in page_redactions:
