@@ -6,6 +6,9 @@ _FENCE = re.compile(r"```(?:json)?\s*(\{.*\}|\[.*\])\s*```", re.DOTALL)
 # Hard per-request timeout so a slow/hanging model can never stall analysis
 # (some model aliases hang indefinitely on the generateContent path).
 _TIMEOUT = int(os.environ.get("GEMINI_TIMEOUT", "60"))
+# Deterministic sampling by default — consistency matters more than variety for
+# legal analysis, so we pin temperature to 0 unless explicitly overridden.
+_TEMPERATURE = float(os.environ.get("GEMINI_TEMPERATURE", "0"))
 
 class GeminiClient:
     def __init__(self, model=None, embed_fn: Optional[Callable[[str], list]] = None) -> None:
@@ -16,7 +19,7 @@ class GeminiClient:
     def from_env(cls) -> "GeminiClient":
         import google.generativeai as genai
         genai.configure(api_key=os.environ["GEMINI_API_KEY"])
-        model = genai.GenerativeModel(os.environ.get("GEMINI_MODEL", "gemini-3.5-flash"))
+        model = genai.GenerativeModel(os.environ.get("GEMINI_MODEL", "gemini-3-pro"))
         embed_model = os.environ.get("GEMINI_EMBED_MODEL", "models/gemini-embedding-001")
         def embed_fn(text: str) -> list:
             r = genai.embed_content(model=embed_model, content=text,
@@ -31,7 +34,11 @@ class GeminiClient:
         return self._embed_fn(text)
 
     def _generate(self, prompt: str) -> str:
-        resp = self._model.generate_content(prompt, request_options={"timeout": _TIMEOUT})
+        resp = self._model.generate_content(
+            prompt,
+            generation_config={"temperature": _TEMPERATURE},
+            request_options={"timeout": _TIMEOUT},
+        )
         return resp.text or ""
 
     def generate_json(self, prompt: str) -> dict:
