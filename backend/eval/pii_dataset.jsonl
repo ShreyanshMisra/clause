@@ -1,0 +1,15 @@
+{"text": "Tenant John Smith resides at 42 Elm Street, Boston, MA 02118 and may be reached at 617-555-0100.", "pii": ["John Smith", "42 Elm Street", "617-555-0100"]}
+{"text": "Please email jane.roe@mail.com or provide SSN 123-45-6789 to release the security deposit.", "pii": ["jane.roe@mail.com", "123-45-6789"]}
+{"text": "Landlord Robert King, P.O. Box 55, may enter the premises with 24 hours written notice.", "pii": ["Robert King", "P.O. Box 55"]}
+{"text": "The lessee Maria Gonzalez paid rent of $1,500 on the first of the month.", "pii": ["Maria Gonzalez"]}
+{"text": "Contact the leasing agent at (415) 555-0199 or pay by card 4111 1111 1111 1111.", "pii": ["(415) 555-0199", "4111 1111 1111 1111"]}
+{"text": "This agreement is between William Carter and the property manager for unit 4B.", "pii": ["William Carter"]}
+{"text": "Emergency contact: Patricia Nguyen, phone 508.555.0142, email pat.nguyen@example.org.", "pii": ["Patricia Nguyen", "508.555.0142", "pat.nguyen@example.org"]}
+{"text": "The guarantor David Thompson signed at 118 Beacon Ave, Somerville, MA 02144.", "pii": ["David Thompson", "118 Beacon Ave"]}
+{"text": "Rent shall be paid to Susan Bennett via check mailed to 7 Warren Road, Cambridge, MA 02138.", "pii": ["Susan Bennett", "7 Warren Road"]}
+{"text": "Co-tenant Michael O'Brien can be reached at 781-555-0170 for scheduling repairs.", "pii": ["Michael O'Brien", "781-555-0170"]}
+{"text": "The tenant shall not sublet the premises without the landlord's written consent.", "pii": []}
+{"text": "Security deposit may not exceed one month's rent under state law.", "pii": []}
+{"text": "Applicant Emily Davis provided a driver's license and paid the $50 application fee.", "pii": ["Emily Davis"]}
+{"text": "Notices to the owner shall be sent to 250 Commonwealth Avenue, Boston, MA 02116.", "pii": ["250 Commonwealth Avenue"]}
+{"text": "For questions about your account contact billing@landlordco.com or 1-617-555-0123.", "pii": ["billing@landlordco.com", "1-617-555-0123"]}
