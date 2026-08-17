@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Backdrop } from "@/components/Backdrop";
 import { GithubLink } from "@/components/GithubLink";
+import { LegalDisclaimer } from "@/components/LegalDisclaimer";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -29,6 +30,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <Backdrop />
         {children}
         <GithubLink />
+        <LegalDisclaimer />
       </body>
     </html>
   );

@@ -77,15 +77,8 @@ export default function AnalyzePage() {
           className="enter-2 max-w-xs text-base font-medium leading-relaxed"
           style={{ color: "var(--ink-muted)", letterSpacing: "-0.005em" }}
         >
-          Spot illegal and risky clauses in your rental agreement&nbsp;—
-          in seconds, not hours.
-        </p>
-        <p
-          className="enter-2 max-w-xs text-xs leading-relaxed"
-          style={{ color: "var(--ink-subtle)", letterSpacing: "0.005em" }}
-        >
-          Clause is not a law firm and this is not legal advice. For informational
-          purposes only&nbsp;— consult a licensed attorney for your situation.
+          Spot potentially illegal, risky, or unfavourable clauses in your
+          rental agreement in seconds.
         </p>
       </div>
 

@@ -16,7 +16,8 @@ def build_statutes(items: list[dict], embedder) -> list[Statute]:
         emb = embedder.embed(f"{it['title']}. {' '.join(tags)}. {it['text']}")
         out.append(Statute(id=it["id"], chapter=it["chapter"], section=it["section"],
                            title=it["title"], text=it["text"], embedding=emb,
-                           topic_tags=tags, source_url=it.get("source_url", "")))
+                           topic_tags=tags, source_url=it.get("source_url", ""),
+                           citation=it.get("citation", "")))
     return out
 
 def main() -> None:

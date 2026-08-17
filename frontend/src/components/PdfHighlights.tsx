@@ -30,11 +30,23 @@ interface Props {
   onHighlightClick: (id: string) => void;
 }
 
-/** Small card shown on hover over a highlight. */
-function HoverCard({ finding }: { finding: Finding | undefined }) {
+/** Small card shown on hover over a highlight. Clicking it jumps to the matching
+ *  clause card on the right (same action as clicking the highlight itself). */
+function HoverCard({ finding, onClick }: { finding: Finding | undefined; onClick?: () => void }) {
   if (!finding) return null;
   return (
-    <div className="max-w-xs rounded-xl bg-white p-4 shadow-xl border border-black/5">
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick?.();
+        }
+      }}
+      className="max-w-xs cursor-pointer rounded-xl bg-white p-4 shadow-xl border border-black/5 transition-shadow hover:shadow-2xl focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/40"
+    >
       <div className="flex items-center gap-2 mb-1">
         <span className="h-2.5 w-2.5 rounded-full" style={{ background: SEVERITY_COLORS[finding.severity] }} />
         <p className="font-semibold text-[var(--ink)] text-sm">{finding.category}</p>
@@ -46,7 +58,7 @@ function HoverCard({ finding }: { finding: Finding | undefined }) {
       {finding.statute_citation && (
         <p className="mt-2 text-[11px] text-[var(--accent-deep)] font-medium">{finding.statute_citation}</p>
       )}
-      <p className="mt-2 text-[10px] text-[var(--ink-subtle)]">Click to view the clause →</p>
+      <p className="mt-2 text-[10px] font-medium text-[var(--accent-deep)]">Click to view the clause →</p>
     </div>
   );
 }
@@ -80,7 +92,12 @@ function findingToHighlight(f: Finding): IHighlight | null {
     pageNumber: page,
     boundingRect,
     rects,
-    usePdfCoordinates: true,
+    // PyMuPDF (backend) emits top-left-origin coordinates in PDF points, which is
+    // the same convention react-pdf-highlighter uses when usePdfCoordinates is
+    // false (it linearly scales x/y by viewport÷page-size). Setting this true would
+    // route through viewport.convertToViewportRectangle, which flips the Y axis and
+    // drops every highlight below its clause. Keep it false.
+    usePdfCoordinates: false,
   };
 
   return {
@@ -172,7 +189,9 @@ export function PdfHighlights({ url, findings, scrollTarget, activeId, onHighlig
               return (
                 <Popup
                   key={index}
-                  popupContent={<HoverCard finding={original} />}
+                  popupContent={
+                    <HoverCard finding={original} onClick={() => onHighlightClick(highlight.id)} />
+                  }
                   onMouseOver={(popupContent) => setTip(highlight, () => popupContent)}
                   onMouseOut={hideTip}
                 >
