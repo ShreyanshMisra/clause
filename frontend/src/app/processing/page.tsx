@@ -218,6 +218,20 @@ function Processing() {
   const [message, setMessage] = useState("Starting analysis…");
   const [failed, setFailed] = useState(false);
   const [piiCount, setPiiCount] = useState<number | null>(null);
+  const [retryNonce, setRetryNonce] = useState(0);
+
+  /* Re-trigger analysis after a failure without leaving the page. */
+  const retry = async () => {
+    setFailed(false);
+    setProgress(10);
+    setMessage("Restarting analysis…");
+    try {
+      await api.analyze(fileId);
+    } catch {
+      /* the poll loop will surface a failure if this didn't take */
+    }
+    setRetryNonce((n) => n + 1);
+  };
 
   /* Read PII count from sessionStorage once */
   useEffect(() => {
@@ -277,7 +291,7 @@ function Processing() {
     return () => {
       active = false;
     };
-  }, [fileId, router]);
+  }, [fileId, router, retryNonce]);
 
   return (
     <main
@@ -406,28 +420,46 @@ function Processing() {
             </div>
           </div>
 
-          {/* Start over — only on failure so the user is never stranded */}
+          {/* Retry / start over — only on failure so the user is never stranded */}
           {failed && (
-            <button
-              type="button"
-              onClick={() => router.push("/")}
-              style={{
-                borderRadius: "100px",
-                background: "var(--accent)",
-                color: "#fff",
-                border: "none",
-                cursor: "pointer",
-                padding: "10px 24px",
-                fontSize: "14px",
-                fontWeight: 600,
-                boxShadow: "0 2px 10px rgba(217,119,87,0.28)",
-                transition: "background 0.15s ease",
-              }}
-              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--accent-deep)"; }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--accent)"; }}
-            >
-              Start over
-            </button>
+            <div style={{ display: "flex", gap: "12px" }}>
+              <button
+                type="button"
+                onClick={retry}
+                style={{
+                  borderRadius: "100px",
+                  background: "var(--accent)",
+                  color: "#fff",
+                  border: "none",
+                  cursor: "pointer",
+                  padding: "10px 24px",
+                  fontSize: "14px",
+                  fontWeight: 600,
+                  boxShadow: "0 2px 10px rgba(217,119,87,0.28)",
+                  transition: "background 0.15s ease",
+                }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--accent-deep)"; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--accent)"; }}
+              >
+                Try again
+              </button>
+              <button
+                type="button"
+                onClick={() => router.push("/")}
+                style={{
+                  borderRadius: "100px",
+                  background: "transparent",
+                  color: "var(--ink-muted)",
+                  border: "1px solid rgba(107,107,99,0.28)",
+                  cursor: "pointer",
+                  padding: "10px 24px",
+                  fontSize: "14px",
+                  fontWeight: 600,
+                }}
+              >
+                Start over
+              </button>
+            </div>
           )}
 
           {/* Divider */}

@@ -141,12 +141,19 @@ function Field({
 export function DemandLetterModal({
   fileId,
   onClose,
+  meta,
 }: {
   fileId: string;
   onClose: () => void;
+  meta?: { parties?: { landlord?: string; tenant?: string; property?: string } };
 }) {
-  const [sender, setSender] = useState({ name: "", address: "" });
-  const [recipient, setRecipient] = useState({ name: "", address: "" });
+  // Prefill from the extracted parties — tenant sends, landlord receives — so the
+  // user isn't retyping what we already parsed.
+  const [sender, setSender] = useState({ name: meta?.parties?.tenant ?? "", address: "" });
+  const [recipient, setRecipient] = useState({
+    name: meta?.parties?.landlord ?? "",
+    address: meta?.parties?.property ?? "",
+  });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

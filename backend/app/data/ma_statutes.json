@@ -1,18 +1,92 @@
 [
-  {"id": "186-15B", "chapter": "186", "section": "15B", "title": "Security deposits",
-   "text": "A landlord may not require a security deposit greater than one month's rent, must hold it in a separate interest-bearing account, provide a receipt and a statement of condition, and return it with interest within 30 days after tenancy ends. Failure can entitle the tenant to treble damages."},
-  {"id": "186-15", "chapter": "186", "section": "15", "title": "Waiver of rights void",
-   "text": "Any provision in a lease whereby a tenant waives statutory rights, such as habitability or the right to a jury trial, is against public policy and void."},
-  {"id": "186-14", "chapter": "186", "section": "14", "title": "Quiet enjoyment; utilities",
-   "text": "A landlord who directly or indirectly interferes with a tenant's quiet enjoyment, or shuts off utilities, is liable for actual and consequential damages or three months' rent, plus costs and attorney fees."},
-  {"id": "239-8A", "chapter": "239", "section": "8A", "title": "Repairs; rent withholding",
-   "text": "A tenant may withhold rent or raise defenses for a landlord's breach of the warranty of habitability or failure to maintain the premises in compliance with the sanitary code."},
-  {"id": "186-18", "chapter": "186", "section": "18", "title": "Reprisal for reporting",
-   "text": "Retaliation against a tenant for reporting code violations or exercising legal rights within six months is presumed unlawful and creates liability for damages of one to three months' rent."},
-  {"id": "111-127L", "chapter": "111", "section": "127L", "title": "Right to repair and deduct",
-   "text": "Where a landlord fails to remedy a serious sanitary code violation after notice, the tenant may repair and deduct up to four months' rent."},
-  {"id": "186-11", "chapter": "186", "section": "11", "title": "Notice to quit for nonpayment",
-   "text": "A tenancy at will may only be terminated for nonpayment after proper 14-day written notice to quit; self-help eviction and lockouts are prohibited."},
-  {"id": "186-12", "chapter": "186", "section": "12", "title": "Notice to terminate tenancy at will",
-   "text": "Termination of a tenancy at will requires written notice equal to the interval between rent days or 30 days, whichever is longer."}
+  {
+    "id": "186-15B",
+    "chapter": "186",
+    "section": "15B",
+    "title": "Security deposits",
+    "text": "At the start of a tenancy a landlord may not require more than: the first month's rent, the last month's rent, a security deposit equal to no more than one month's rent, and the cost of a new lock and key. A security deposit must be held in a separate, interest-bearing account in a Massachusetts bank, and the tenant must receive a receipt identifying the bank and account within 30 days. The landlord must pay the tenant 5 percent interest (or the actual interest earned) each year. Within 30 days of receiving the deposit or the start of the tenancy, the landlord must give the tenant a signed statement of the condition of the premises. Within 30 days after the tenancy ends the landlord must return the deposit with interest, less only lawful deductions for unpaid rent, an agreed increase in real estate taxes, or reasonable damage beyond ordinary wear and tear, supported by a sworn, itemized list of damages with documentation. A landlord who fails to return the deposit within 30 days, fails to provide the itemized list, holds the deposit in a commingled account, or uses a lease with a clause forfeiting the deposit, forfeits the deposit and is liable for three times the amount wrongfully withheld, plus 5 percent interest, court costs, and reasonable attorney's fees.",
+    "topic_tags": ["security deposit", "last month rent", "interest", "statement of condition", "itemized damages", "treble damages", "wear and tear"],
+    "source_url": "https://malegislature.gov/Laws/GeneralLaws/PartII/TitleI/Chapter186/Section15B"
+  },
+  {
+    "id": "186-15",
+    "chapter": "186",
+    "section": "15",
+    "title": "Waiver of statutory rights void",
+    "text": "Any provision of a lease or other rental agreement by which a tenant waives, or purports to waive, rights and remedies provided by law is against public policy and void. A landlord may not require a tenant to agree to terms that strip statutory protections such as the warranty of habitability or security-deposit rights.",
+    "topic_tags": ["waiver", "void clause", "unenforceable", "statutory rights"],
+    "source_url": "https://malegislature.gov/Laws/GeneralLaws/PartII/TitleI/Chapter186/Section15"
+  },
+  {
+    "id": "186-14",
+    "chapter": "186",
+    "section": "14",
+    "title": "Quiet enjoyment; interference with utilities",
+    "text": "A landlord who willfully or intentionally fails to furnish water, hot water, heat, light, power, or gas required by the tenancy, or who directly or indirectly interferes with the tenant's quiet enjoyment of the premises, or who attempts to regain possession other than through lawful court process (including by changing locks, removing belongings, or shutting off utilities), is liable to the tenant for actual and consequential damages or three months' rent, whichever is greater, together with the costs of the action and reasonable attorney's fees.",
+    "topic_tags": ["quiet enjoyment", "utilities", "heat", "hot water", "self-help eviction", "lockout", "three months rent"],
+    "source_url": "https://malegislature.gov/Laws/GeneralLaws/PartII/TitleI/Chapter186/Section14"
+  },
+  {
+    "id": "186-18",
+    "chapter": "186",
+    "section": "18",
+    "title": "Reprisal for reporting violations or organizing",
+    "text": "A landlord may not threaten, take, or serve a reprisal against a tenant for reporting housing-code violations to a public body, for pursuing or asserting legal rights, or for joining a tenants' organization. Conduct such as an eviction, a rent increase, or a substantial reduction in services within six months of the tenant's protected activity creates a rebuttable presumption of unlawful reprisal. A landlord who violates this section is liable for the tenant's actual damages or between one and three months' rent, whichever is greater, plus costs and reasonable attorney's fees.",
+    "topic_tags": ["retaliation", "reprisal", "code violation report", "tenant organizing", "presumption", "rent increase"],
+    "source_url": "https://malegislature.gov/Laws/GeneralLaws/PartII/TitleI/Chapter186/Section18"
+  },
+  {
+    "id": "186-11",
+    "chapter": "186",
+    "section": "11",
+    "title": "Notice to quit for nonpayment of rent",
+    "text": "A tenancy at will may be terminated for nonpayment of rent only after the landlord gives the tenant a written 14-day notice to quit. A tenant who has not received such a notice within the prior twelve months may cure and reinstate the tenancy by paying all rent due, together with interest and costs, on or before the answer date in any resulting eviction action.",
+    "topic_tags": ["notice to quit", "nonpayment", "14 day notice", "cure", "eviction"],
+    "source_url": "https://malegislature.gov/Laws/GeneralLaws/PartII/TitleI/Chapter186/Section11"
+  },
+  {
+    "id": "186-12",
+    "chapter": "186",
+    "section": "12",
+    "title": "Notice to terminate tenancy at will",
+    "text": "A tenancy at will may be terminated without cause by either party by written notice. The notice period must equal the interval between rent days or 30 days, whichever is longer. A no-cause termination that provides less notice than the statute requires is defective.",
+    "topic_tags": ["notice to terminate", "tenancy at will", "30 day notice", "no cause"],
+    "source_url": "https://malegislature.gov/Laws/GeneralLaws/PartII/TitleI/Chapter186/Section12"
+  },
+  {
+    "id": "239-8A",
+    "chapter": "239",
+    "section": "8A",
+    "title": "Habitability defense and rent withholding in eviction",
+    "text": "In a summary process (eviction) action for nonpayment of rent or for termination without fault, a tenant may raise, as a defense or counterclaim, that the landlord breached the implied warranty of habitability or violated a statute or code affecting health or safety, provided the landlord knew of the conditions before the rent was withheld and the conditions were not caused by the tenant. Rent may be withheld or abated to the extent of the diminished value of the premises, and the tenant may not be evicted for nonpayment of rent that was lawfully withheld once the tenant pays the amount found due by the court.",
+    "topic_tags": ["warranty of habitability", "rent withholding", "abatement", "code violation", "eviction defense", "counterclaim"],
+    "source_url": "https://malegislature.gov/Laws/GeneralLaws/PartIII/TitleIV/Chapter239/Section8A"
+  },
+  {
+    "id": "111-127L",
+    "chapter": "111",
+    "section": "127L",
+    "title": "Repair and deduct",
+    "text": "If a landlord fails to remedy a violation of the State Sanitary Code that may endanger health or safety within a reasonable time after receiving notice, and the violation was not caused by the tenant, the tenant may arrange for the repair and deduct the reasonable cost from future rent, up to four months' rent in any twelve-month period, without being liable for eviction on that basis.",
+    "topic_tags": ["repair and deduct", "sanitary code", "habitability", "health and safety", "four months rent"],
+    "source_url": "https://malegislature.gov/Laws/GeneralLaws/PartI/TitleXVI/Chapter111/Section127L"
+  },
+  {
+    "id": "93A-2",
+    "chapter": "93A",
+    "section": "2",
+    "title": "Unfair or deceptive acts unlawful",
+    "text": "Unfair methods of competition and unfair or deceptive acts or practices in the conduct of any trade or commerce are unlawful. In the residential rental context, conduct that violates landlord-tenant statutes or regulations — such as mishandling a security deposit, charging unlawful fees, or renting premises unfit for habitation — constitutes an unfair or deceptive practice.",
+    "topic_tags": ["consumer protection", "unfair", "deceptive", "unlawful fees", "trade or commerce"],
+    "source_url": "https://malegislature.gov/Laws/GeneralLaws/PartI/TitleXV/Chapter93A/Section2"
+  },
+  {
+    "id": "93A-9",
+    "chapter": "93A",
+    "section": "9",
+    "title": "Consumer remedies; multiple damages and attorney's fees",
+    "text": "A person injured by an unfair or deceptive act may, after sending a written 30-day demand for relief, recover actual damages or $25, whichever is greater. If the act was a willful or knowing violation, or if the respondent refused a reasonable settlement offer in bad faith, the court may award double or treble damages and, in a successful action, reasonable attorney's fees and costs. This remedy is commonly available to tenants for landlord violations of the security-deposit and habitability statutes.",
+    "topic_tags": ["demand letter", "30 day demand", "double damages", "treble damages", "attorney's fees", "consumer remedy"],
+    "source_url": "https://malegislature.gov/Laws/GeneralLaws/PartI/TitleXV/Chapter93A/Section9"
+  }
 ]

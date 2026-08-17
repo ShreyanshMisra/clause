@@ -1,6 +1,7 @@
 import os, tempfile
 from app.jobs import JobRegistry
 from app.models import AnalysisResult, Metadata
+from app.redaction_map import RedactionSpan
 from app.vector_store import get_vector_store
 from app.llm_service import LLMService
 import app.db as db
@@ -18,6 +19,9 @@ results: dict[str, AnalysisResult] = {}    # file_id -> AnalysisResult
 redacted_text: dict[str, str] = {}        # file_id -> redacted text
 redacted_pages: dict[str, list[str]] = {}  # file_id -> per-page redacted text
 metadata_store: dict[str, Metadata] = {}   # file_id -> Metadata
+# file_id -> per-page RedactionSpans, so highlighting can map a redacted quote
+# back to the original PDF text (see app.redaction_map.restore).
+redaction_spans: dict[str, list[list[RedactionSpan]]] = {}
 
 def pdf_path(file_id: str) -> str:
     """Persistent location for an uploaded PDF (survives restarts so

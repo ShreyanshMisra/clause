@@ -1,6 +1,8 @@
-from app.models import Finding, HighlightPosition, Severity, COLOR_BY_SEVERITY
+from typing import Optional
+from app.models import BoundingRect, Finding, HighlightPosition, Severity, COLOR_BY_SEVERITY
 from app.llm_service import FindingDraft
 from app.pdf_service import search_rects
+from app.redaction_map import RedactionSpan, restore
 
 def color_for(severity: str) -> str:
     try:
@@ -8,11 +10,27 @@ def color_for(severity: str) -> str:
     except ValueError:
         return "yellow"
 
-def build_highlight(draft: FindingDraft, pdf_path: str, index: int) -> Finding:
-    rects = search_rects(pdf_path, draft.page, draft.quoted_text) if draft.quoted_text else []
+def union_rect(rects: list[BoundingRect]) -> BoundingRect:
+    """Bounding box enclosing every rect (a multi-line quote spans several rects).
+    Using the union rather than rects[0] means the highlight covers all lines, not
+    just the first. width/height carry the page dimensions (the scaling basis)."""
+    page = rects[0]
+    return BoundingRect(
+        x1=min(r.x1 for r in rects), y1=min(r.y1 for r in rects),
+        x2=max(r.x2 for r in rects), y2=max(r.y2 for r in rects),
+        width=page.width, height=page.height, pageNumber=page.pageNumber,
+    )
+
+def build_highlight(draft: FindingDraft, pdf_path: str, index: int,
+                    spans: Optional[list[RedactionSpan]] = None) -> Finding:
+    # The model quotes REDACTED text ([PERSON_1] …) but the PDF holds the original,
+    # so restore the quote to original wording before searching. The Finding keeps
+    # the redacted quoted_text for display — the restored text is used only to locate.
+    search_text = restore(draft.quoted_text, spans) if spans else draft.quoted_text
+    rects = search_rects(pdf_path, draft.page, search_text) if search_text else []
     position = None
     if rects:
-        bounding = rects[0]
+        bounding = union_rect(rects)
         position = HighlightPosition(
             boundingRect=bounding, rects=rects,
             pageWidth=bounding.width, pageHeight=bounding.height,
@@ -28,4 +46,10 @@ def build_highlight(draft: FindingDraft, pdf_path: str, index: int) -> Finding:
         explanation=draft.explanation,
         damages_estimate=draft.damages_estimate,
         position=position,
+        legal_reasoning=draft.legal_reasoning,
+        severity_rationale=draft.severity_rationale,
+        recommended_action=draft.recommended_action,
+        confidence=draft.confidence,
+        statute_quote=draft.statute_quote,
+        damages_basis=draft.damages_basis,
     )

@@ -13,6 +13,13 @@ class FindingDraft:
     statute_citation: Optional[str]
     explanation: str
     damages_estimate: Optional[float]
+    statute_id: str = ""
+    legal_reasoning: str = ""
+    severity_rationale: str = ""
+    recommended_action: str = ""
+    confidence: float = 0.0
+    statute_quote: str = ""
+    damages_basis: str = ""
 
 # Prompt-injection guard. Everything below a delimiter is document/user content and
 # must be treated as data, never as instructions — a malicious lease could otherwise
@@ -40,15 +47,48 @@ _ANALYZE_PROMPT = (
     "quoted_text (verbatim from the chunk), "
     "page (integer — the CHUNK may span multiple pages delimited by lines like '=== PAGE N ==='; "
     "set page to where quoted_text appears), "
-    "category, severity (one of illegal|high|medium|favorable), "
+    "category (a short label), severity (one of illegal|high|medium|favorable), "
     "statute_id (the exact [id] of the single supporting statute from the list above), "
-    "explanation (name the statute and explain the violation in plain English), and "
-    "damages_estimate: your best estimate of the tenant's potential dollar recovery under "
-    "Massachusetts law (e.g. treble the security deposit under 186-15B, up to three months' rent "
-    "for quiet-enjoyment or retaliation), as a plain number with no symbols or commas; use null "
-    "only when there is no monetary remedy. "
-    "Default page to {page_hint}.\n\nSTATUTES:\n{statutes}\n\nCHUNK:\n{chunk}"
+    "legal_reasoning (connect the specific clause language to the statutory requirement it "
+    "violates or satisfies — cite the element), "
+    "severity_rationale (one sentence on why you chose that severity), "
+    "recommended_action (what the tenant should do about it), "
+    "confidence (a number 0-1 for how sure you are the statute supports this finding), "
+    "explanation (a plain-English summary for a non-lawyer), and "
+    "damages_estimate: the tenant's potential dollar recovery under Massachusetts law (e.g. treble "
+    "the security deposit under 186-15B, up to three months' rent for quiet-enjoyment or "
+    "retaliation), as a plain number with no symbols or commas; use null when there is no monetary "
+    "remedy. Default page to {page_hint}.\n\nSTATUTES:\n{statutes}\n\nCHUNK:\n{chunk}"
 )
+
+# Schema handed to the model for constrained JSON output. The fenced-JSON fallback in
+# GeminiClient still applies if the model ignores it.
+_ANALYZE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "findings": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "quoted_text": {"type": "string"},
+                    "page": {"type": "integer"},
+                    "category": {"type": "string"},
+                    "severity": {"type": "string"},
+                    "statute_id": {"type": "string"},
+                    "legal_reasoning": {"type": "string"},
+                    "severity_rationale": {"type": "string"},
+                    "recommended_action": {"type": "string"},
+                    "confidence": {"type": "number"},
+                    "explanation": {"type": "string"},
+                    "damages_estimate": {"type": "number", "nullable": True},
+                },
+                "required": ["quoted_text", "category", "severity", "statute_id"],
+            },
+        },
+    },
+    "required": ["findings"],
+}
 
 
 def _match_statute(cite: str, statutes: list[Statute]) -> Optional[Statute]:
@@ -97,7 +137,8 @@ class LLMService:
         statute_text = "\n".join(
             f"- [{s.id}] c.{s.chapter} s.{s.section} {s.title}: {s.text}" for s in statutes)
         data = self._client.generate_json(
-            _ANALYZE_PROMPT.format(statutes=statute_text, chunk=chunk, page_hint=page_hint))
+            _ANALYZE_PROMPT.format(statutes=statute_text, chunk=chunk, page_hint=page_hint),
+            schema=_ANALYZE_SCHEMA)
         by_id = {s.id: s for s in statutes}
         out = []
         for f in data.get("findings", []):
@@ -108,6 +149,10 @@ class LLMService:
             st = by_id.get(ref.strip()) or _match_statute(ref, statutes)
             if st is None:
                 continue
+            try:
+                confidence = float(f.get("confidence", 0.0) or 0.0)
+            except (TypeError, ValueError):
+                confidence = 0.0
             out.append(FindingDraft(
                 quoted_text=f.get("quoted_text", ""),
                 page=int(f.get("page", page_hint) or page_hint),
@@ -116,18 +161,29 @@ class LLMService:
                 statute_citation=f"M.G.L. c.{st.chapter} § {st.section}",
                 explanation=f.get("explanation", ""),
                 damages_estimate=f.get("damages_estimate"),
+                statute_id=st.id,
+                legal_reasoning=f.get("legal_reasoning", ""),
+                severity_rationale=f.get("severity_rationale", ""),
+                recommended_action=f.get("recommended_action", ""),
+                confidence=confidence,
+                # Statutory language comes from OUR corpus, never the model.
+                statute_quote=st.text,
+                damages_basis=f.get("damages_basis", ""),
             ))
         return out
 
     def draft_demand_letter(self, findings: list[FindingDraft], metadata: Metadata,
                             sender: dict, recipient: dict) -> str:
-        issues = "\n".join(f"- {f.category} ({f.severity}): {f.explanation} "
-                           f"[{f.statute_citation}]" for f in findings)
+        issues = "\n".join(
+            f"- {f.category} ({f.severity}) [{f.statute_citation}]: {f.explanation}"
+            + (f" Reasoning: {f.legal_reasoning}" if f.legal_reasoning else "")
+            for f in findings)
         prompt = (
             _INJECTION_GUARD
-            + "Draft the BODY (HTML paragraphs only, no <html>/<head>) of a firm but professional "
-            "demand letter from a Massachusetts tenant to a landlord citing these issues and "
-            "requesting remedy within 30 days.\n\n"
+            + "Draft the BODY (HTML paragraphs only, no <html>/<head>, and do NOT include a "
+            "damages table — that is added separately) of a firm but professional demand letter "
+            "from a Massachusetts tenant to a landlord. Cite each issue's statute, explain the "
+            "violation, and demand remedy within 30 days.\n\n"
             f"SENDER: {sender}\nRECIPIENT: {recipient}\nISSUES:\n{issues}"
         )
         return self._client.generate_text(prompt)

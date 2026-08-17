@@ -57,6 +57,22 @@ def _init_services() -> None:
         state.seeded = True
     except Exception as exc:
         logging.warning("Statute seeding failed at startup: %s — will retry on first analysis", exc)
+    # Warm the spaCy/Presidio NER model now so the first upload doesn't eat the
+    # multi-second model load. Best-effort: redaction falls back to regex if absent.
+    try:
+        from app.pii_service import _get_ner
+        _get_ner()
+    except Exception as exc:
+        logging.warning("NER warmup skipped: %s", exc)
+    # Optional second PII layer on the fast model (see app.pii_llm). Off unless
+    # PII_LLM_ASSIST is set; tolerate a missing key so the app still boots.
+    if os.environ.get("PII_LLM_ASSIST", "").lower() in ("1", "true", "yes", "on"):
+        try:
+            from app.gemini_client import GeminiClient
+            from app.pii_service import set_pii_client
+            set_pii_client(GeminiClient.fast_from_env())
+        except Exception as exc:
+            logging.warning("PII LLM assist unavailable: %s", exc)
 
 
 @asynccontextmanager
@@ -205,6 +221,7 @@ async def upload(request: Request, file: UploadFile = File(...),
         raise HTTPException(400, "Document exceeds 20 pages for this demo")
     page_redactions = [redact(p.text) for p in pages]
     state.redacted_pages[file_id] = [r.redacted_text for r in page_redactions]
+    state.redaction_spans[file_id] = [r.spans for r in page_redactions]
     state.redacted_text[file_id] = "\n".join(r.redacted_text for r in page_redactions)
     summary: dict[str, int] = {}
     for r in page_redactions:
@@ -241,16 +258,28 @@ def _run_analysis(file_id: str):
         from app.bootstrap import seed_local_if_needed
         seed_local_if_needed(state.vector_store, state.embedder)
         state.seeded = True
+    # Ensure metadata exists — it feeds the statutory damages calculator and the
+    # demand letter. If the UI didn't call /extract-metadata, derive it inline.
+    md = state.metadata_store.get(file_id)
+    if md is None:
+        text = state.redacted_text.get(file_id)
+        if text:
+            try:
+                md = state.llm.extract_metadata(text)
+                state.metadata_store[file_id] = md
+            except Exception:
+                md = None
     try:
         result = analyze_document(file_id, state.pdf_path(file_id),
                                   state.redacted_pages.get(file_id, []),
-                                  state.llm, state.embedder, state.vector_store, state.registry)
+                                  state.llm, state.embedder, state.vector_store, state.registry,
+                                  metadata=md,
+                                  redaction_spans=state.redaction_spans.get(file_id))
     except Exception:
         # Registry already marked failed; persist it so the dashboard card
         # doesn't show a perpetual "Analysing…" for this case.
         db.set_status(file_id, "failed")
         raise
-    md = state.metadata_store.get(file_id)
     if md is not None:
         result.documentMetadata = md
     state.results[file_id] = result
@@ -322,10 +351,34 @@ def demand_letter(body: DemandLetterBody, request: Request,
     from app.llm_service import FindingDraft
     drafts = [FindingDraft(quoted_text=h.quoted_text, page=h.page, category=h.category,
                            severity=h.severity.value, statute_citation=h.statute_citation,
-                           explanation=h.explanation, damages_estimate=h.damages_estimate)
+                           explanation=h.explanation, damages_estimate=h.damages_estimate,
+                           legal_reasoning=h.legal_reasoning, damages_basis=h.damages_basis)
               for h in result.highlights]
     md = state.metadata_store.get(body.file_id) or result.documentMetadata
     body_html = _llm().draft_demand_letter(drafts, md, body.sender, body.recipient)
-    pdf_bytes = render_letter_pdf(body_html, title="Demand Letter")
+    # Render the damages table deterministically (not by the LLM), one row per
+    # finding with a monetary remedy, plus a total.
+    damages_rows = [(h.category, h.statute_citation or "", h.damages_estimate)
+                    for h in result.highlights
+                    if h.damages_estimate and h.damages_estimate > 0]
+    pdf_bytes = render_letter_pdf(body_html, title="Demand Letter", damages_rows=damages_rows)
     return Response(content=pdf_bytes, media_type="application/pdf",
                     headers={"Content-Disposition": "attachment; filename=demand-letter.pdf"})
+
+@app.get("/report/{file_id}")
+def report(file_id: str, authorization: Optional[str] = Header(default=None)):
+    """Export the analysis itself as a PDF report (no LLM call — rendered from the
+    stored findings)."""
+    _authorize_case(file_id, authorization)
+    result = state.results.get(file_id)
+    stored = result.model_dump() if result is not None else db.get_result(file_id)
+    if stored is None:
+        raise HTTPException(404, "Analysis not ready")
+    from app.letter_service import render_report_pdf
+    highlights = stored.get("highlights", [])
+    damages_rows = [(h.get("category", ""), h.get("statute_citation") or "", h["damages_estimate"])
+                    for h in highlights
+                    if h.get("damages_estimate") and h["damages_estimate"] > 0]
+    pdf_bytes = render_report_pdf(highlights, damages_rows=damages_rows)
+    return Response(content=pdf_bytes, media_type="application/pdf",
+                    headers={"Content-Disposition": "attachment; filename=clause-report.pdf"})

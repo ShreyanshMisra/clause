@@ -35,6 +35,33 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
+function MetaField({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0">
+      <p className="text-[10px] uppercase tracking-wide text-[var(--ink-subtle)]">{label}</p>
+      <p className="truncate text-sm font-medium text-[var(--ink)]" title={value}>{value || "—"}</p>
+    </div>
+  );
+}
+
+function MetaBar({ meta }: { meta: AnalysisResult["documentMetadata"] }) {
+  const p = meta?.parties;
+  // Only render once the model has filled in at least one field.
+  const hasAny = !!(p?.landlord || p?.tenant || p?.property || meta?.monthlyRent ||
+    meta?.leaseTerm || meta?.securityDeposit);
+  if (!hasAny) return null;
+  return (
+    <section className="mb-6 grid grid-cols-2 gap-4 rounded-2xl bg-[var(--surface)]/60 p-4 backdrop-blur-sm border border-white/40 sm:grid-cols-3 lg:grid-cols-6">
+      <MetaField label="Landlord" value={p?.landlord ?? ""} />
+      <MetaField label="Tenant" value={p?.tenant ?? ""} />
+      <MetaField label="Property" value={p?.property ?? ""} />
+      <MetaField label="Monthly rent" value={meta?.monthlyRent ?? ""} />
+      <MetaField label="Lease term" value={meta?.leaseTerm ?? ""} />
+      <MetaField label="Security deposit" value={meta?.securityDeposit ?? ""} />
+    </section>
+  );
+}
+
 export default function Results() {
   const { id } = useParams<{ id: string }>();
   const [data, setData] = useState<AnalysisResult | null>(null);
@@ -75,6 +102,22 @@ export default function Results() {
     setActiveId(fid);
     cardRefs.current.get(fid)?.scrollIntoView({ behavior: "smooth", block: "center" });
   }, []);
+
+  // Download the analysis itself as a PDF report.
+  const downloadReport = useCallback(async () => {
+    try {
+      const res = await api.report(id);
+      if (!res.ok) return;
+      const url = URL.createObjectURL(await res.blob());
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "clause-report.pdf";
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      /* ignore — download is best-effort */
+    }
+  }, [id]);
 
   if (error) {
     return (
@@ -119,13 +162,26 @@ export default function Results() {
         <div className="h-10 w-px bg-[var(--ink-subtle)]/20 hidden sm:block" />
         <Stat label="Est. recovery" value={s.estimatedRecovery} />
 
-        <button
-          className="ml-auto rounded-full bg-[var(--accent)] px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--accent-deep)] hover:shadow-md active:scale-95"
-          onClick={() => setLetterOpen(true)}
-        >
-          Generate demand letter
-        </button>
+        <div className="ml-auto flex items-center gap-3">
+          <button
+            className="rounded-full border border-[var(--ink-subtle)]/30 px-5 py-3 text-sm font-semibold text-[var(--ink-muted)] transition hover:bg-black/5 active:scale-95"
+            onClick={downloadReport}
+          >
+            Download report
+          </button>
+          <button
+            disabled={s.issuesFound === 0}
+            title={s.issuesFound === 0 ? "No issues to demand remedy for." : undefined}
+            className="rounded-full bg-[var(--accent)] px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--accent-deep)] hover:shadow-md active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-[var(--accent)] disabled:hover:shadow-sm disabled:active:scale-100"
+            onClick={() => { if (s.issuesFound > 0) setLetterOpen(true); }}
+          >
+            Generate demand letter
+          </button>
+        </div>
       </header>
+
+      {/* Document metadata (parties / rent / term / deposit) */}
+      <MetaBar meta={data.documentMetadata} />
 
       {/* Split view */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.4fr_1fr]">
@@ -168,7 +224,9 @@ export default function Results() {
         </div>
       </div>
 
-      {letterOpen && <DemandLetterModal fileId={id} onClose={() => setLetterOpen(false)} />}
+      {letterOpen && (
+        <DemandLetterModal fileId={id} meta={data.documentMetadata} onClose={() => setLetterOpen(false)} />
+      )}
     </main>
   );
 }

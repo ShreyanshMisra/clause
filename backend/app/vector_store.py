@@ -1,6 +1,7 @@
 from __future__ import annotations
 import math
-from dataclasses import dataclass
+import re
+from dataclasses import dataclass, field
 from typing import Any, Callable, Optional, Protocol
 
 @dataclass
@@ -11,16 +12,44 @@ class Statute:
     title: str
     text: str
     embedding: Optional[list[float]] = None
+    topic_tags: list[str] = field(default_factory=list)
+    source_url: str = ""
 
 class VectorStore(Protocol):
     def seed(self, statutes: list[Statute]) -> None: ...
-    def search(self, embedding: list[float], k: int) -> list[Statute]: ...
+    def search(self, embedding: list[float], k: int, query_text: str = "") -> list[Statute]: ...
 
 def _cosine(a: list[float], b: list[float]) -> float:
     dot = sum(x * y for x, y in zip(a, b, strict=False))
     na = math.sqrt(sum(x * x for x in a))
     nb = math.sqrt(sum(y * y for y in b))
     return dot / (na * nb) if na and nb else 0.0
+
+# Very small stopword set — enough to stop function words from dominating the
+# keyword overlap without pulling in an NLP dependency.
+_STOPWORDS = {
+    "the", "a", "an", "and", "or", "of", "to", "in", "for", "on", "at", "by",
+    "with", "shall", "may", "any", "this", "that", "is", "are", "be", "as", "from",
+}
+
+
+def _tokens(text: str) -> set[str]:
+    return {t for t in re.findall(r"[a-z0-9]+", text.lower()) if t not in _STOPWORDS and len(t) > 2}
+
+
+def _keyword_overlap(query_text: str, statute: Statute) -> float:
+    """Fraction of query tokens that appear in the statute's title/text/tags."""
+    q = _tokens(query_text)
+    if not q:
+        return 0.0
+    hay = _tokens(f"{statute.title} {statute.text} {' '.join(statute.topic_tags)}")
+    return len(q & hay) / len(q)
+
+
+# Weight on the keyword signal relative to cosine similarity. Small by default so
+# vector similarity leads and keywords break ties / rescue lexical matches.
+_KEYWORD_BOOST = 0.15
+
 
 class LocalVectorStore:
     def __init__(self) -> None:
@@ -32,11 +61,12 @@ class LocalVectorStore:
     def seed(self, statutes: list[Statute]) -> None:
         self._items = list(statutes)
 
-    def search(self, embedding: list[float], k: int) -> list[Statute]:
-        scored = sorted(self._items,
-                        key=lambda s: _cosine(embedding, s.embedding or []),
-                        reverse=True)
-        return scored[:k]
+    def search(self, embedding: list[float], k: int, query_text: str = "") -> list[Statute]:
+        """Hybrid retrieval: cosine similarity plus a small keyword-overlap boost so
+        lexically-obvious matches aren't lost when embeddings are noisy."""
+        def hybrid(s: Statute) -> float:
+            return _cosine(embedding, s.embedding or []) + _KEYWORD_BOOST * _keyword_overlap(query_text, s)
+        return sorted(self._items, key=hybrid, reverse=True)[:k]
 
 
 import os
@@ -63,7 +93,9 @@ class SnowflakeVectorStore:
         finally:
             cur.close()
 
-    def search(self, embedding: list[float], k: int) -> list[Statute]:
+    def search(self, embedding: list[float], k: int, query_text: str = "") -> list[Statute]:
+        # query_text is accepted for interface parity with LocalVectorStore; the
+        # DB path ranks purely by vector similarity for now.
         vec = "[" + ",".join(str(x) for x in embedding) + "]"
         sql = (
             f"SELECT id, chapter, section, title, text FROM {self._table} "
