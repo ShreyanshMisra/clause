@@ -266,7 +266,8 @@ def _run_analysis(file_id: str):
         result = analyze_document(file_id, state.pdf_path(file_id),
                                   state.redacted_pages.get(file_id, []),
                                   state.llm, state.embedder, state.vector_store, state.registry,
-                                  metadata=md)
+                                  metadata=md,
+                                  redaction_spans=state.redaction_spans.get(file_id))
     except Exception:
         # Registry already marked failed; persist it so the dashboard card
         # doesn't show a perpetual "Analysing…" for this case.

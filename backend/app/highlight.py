@@ -1,6 +1,8 @@
+from typing import Optional
 from app.models import BoundingRect, Finding, HighlightPosition, Severity, COLOR_BY_SEVERITY
 from app.llm_service import FindingDraft
 from app.pdf_service import search_rects
+from app.redaction_map import RedactionSpan, restore
 
 def color_for(severity: str) -> str:
     try:
@@ -19,8 +21,13 @@ def union_rect(rects: list[BoundingRect]) -> BoundingRect:
         width=page.width, height=page.height, pageNumber=page.pageNumber,
     )
 
-def build_highlight(draft: FindingDraft, pdf_path: str, index: int) -> Finding:
-    rects = search_rects(pdf_path, draft.page, draft.quoted_text) if draft.quoted_text else []
+def build_highlight(draft: FindingDraft, pdf_path: str, index: int,
+                    spans: Optional[list[RedactionSpan]] = None) -> Finding:
+    # The model quotes REDACTED text ([PERSON_1] …) but the PDF holds the original,
+    # so restore the quote to original wording before searching. The Finding keeps
+    # the redacted quoted_text for display — the restored text is used only to locate.
+    search_text = restore(draft.quoted_text, spans) if spans else draft.quoted_text
+    rects = search_rects(pdf_path, draft.page, search_text) if search_text else []
     position = None
     if rects:
         bounding = union_rect(rects)

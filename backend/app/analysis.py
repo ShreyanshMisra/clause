@@ -6,6 +6,7 @@ from app.models import AnalysisResult, AnalysisSummary, TopIssue, Severity, Meta
 from app.highlight import build_highlight
 from app.jobs import JobRegistry
 from app.llm_service import LLMService
+from app.redaction_map import RedactionSpan
 from app.remedy import compute_damages, money
 from app.vector_store import VectorStore
 
@@ -35,7 +36,8 @@ def _apply_statutory_damages(drafts, metadata: Optional[Metadata]) -> None:
 
 def analyze_document(file_id: str, pdf_path: str, redacted_pages: list[str],
                      llm: LLMService, embedder, store: VectorStore, registry: JobRegistry,
-                     top_k: int = 6, metadata: Optional[Metadata] = None) -> AnalysisResult:
+                     top_k: int = 6, metadata: Optional[Metadata] = None,
+                     redaction_spans: Optional[list[list[RedactionSpan]]] = None) -> AnalysisResult:
     try:
         registry.update(file_id, status="processing", progress=20, message="Loading document...")
         pages = redacted_pages or [""]
@@ -90,7 +92,14 @@ def analyze_document(file_id: str, pdf_path: str, redacted_pages: list[str],
         _apply_statutory_damages(drafts, metadata)
 
         registry.update(file_id, progress=90, message="Extracting highlight positions...")
-        highlights = [build_highlight(d, pdf_path, i) for i, d in enumerate(drafts)]
+
+        def spans_for(page: int) -> Optional[list[RedactionSpan]]:
+            if redaction_spans and 1 <= page <= len(redaction_spans):
+                return redaction_spans[page - 1]
+            return None
+
+        highlights = [build_highlight(d, pdf_path, i, spans_for(d.page))
+                      for i, d in enumerate(drafts)]
 
         max_sev = max((_RISK_ORDER[h.severity] for h in highlights), default=0)
         total_damages = sum(h.damages_estimate or 0 for h in highlights)
