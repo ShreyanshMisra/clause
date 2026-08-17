@@ -64,6 +64,17 @@ def test_status_unknown_id_returns_404():
         r = client.get("/status/doesnotexist")
         assert r.status_code == 404
 
+def test_report_returns_pdf():
+    with TestClient(app) as client:
+        with open(FIX, "rb") as f:
+            fid = client.post("/upload", files={"file": ("s.pdf", f, "application/pdf")}).json()["file_id"]
+        client.post("/analyze", json={"file_id": fid})
+        client.get(f"/status/{fid}")  # flush background task
+        r = client.get(f"/report/{fid}")
+        assert r.status_code == 200
+        assert r.content[:4] == b"%PDF"
+
+
 def test_demand_letter_returns_pdf():
     with TestClient(app) as client:
         with open(FIX, "rb") as f:

@@ -77,3 +77,29 @@ def render_letter_pdf(body_html: str, title: str = "Demand Letter",
                       damages_rows: Optional[list[tuple[str, str, float]]] = None) -> bytes:
     html = build_letter_html(body_html, title, damages_rows)
     return HTML(string=html, url_fetcher=_blocking_url_fetcher, base_url=None).write_pdf()
+
+
+def build_report_html(findings: list[dict], damages_rows: Optional[list[tuple[str, str, float]]] = None,
+                      title: str = "Clause Analysis Report") -> str:
+    """Assemble an analysis-report body from findings (all values escaped, since they
+    originate from the model) plus the deterministic damages table."""
+    sections = ""
+    for f in findings:
+        sections += f"<h2>{_esc(f.get('category', 'Finding'))} — {_esc(f.get('severity', ''))}</h2>"
+        if f.get("statute_citation"):
+            sections += f"<p><strong>{_esc(f['statute_citation'])}</strong></p>"
+        if f.get("explanation"):
+            sections += f"<p>{_esc(f['explanation'])}</p>"
+        if f.get("legal_reasoning"):
+            sections += f"<p><em>{_esc(f['legal_reasoning'])}</em></p>"
+        if f.get("recommended_action"):
+            sections += f"<p><strong>Recommended action:</strong> {_esc(f['recommended_action'])}</p>"
+    if not sections:
+        sections = "<p>No issues were flagged in this document.</p>"
+    return build_letter_html(sections, title=title, damages_rows=damages_rows)
+
+
+def render_report_pdf(findings: list[dict],
+                      damages_rows: Optional[list[tuple[str, str, float]]] = None) -> bytes:
+    html = build_report_html(findings, damages_rows)
+    return HTML(string=html, url_fetcher=_blocking_url_fetcher, base_url=None).write_pdf()

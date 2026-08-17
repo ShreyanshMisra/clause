@@ -357,3 +357,21 @@ def demand_letter(body: DemandLetterBody, request: Request,
     pdf_bytes = render_letter_pdf(body_html, title="Demand Letter", damages_rows=damages_rows)
     return Response(content=pdf_bytes, media_type="application/pdf",
                     headers={"Content-Disposition": "attachment; filename=demand-letter.pdf"})
+
+@app.get("/report/{file_id}")
+def report(file_id: str, authorization: Optional[str] = Header(default=None)):
+    """Export the analysis itself as a PDF report (no LLM call — rendered from the
+    stored findings)."""
+    _authorize_case(file_id, authorization)
+    result = state.results.get(file_id)
+    stored = result.model_dump() if result is not None else db.get_result(file_id)
+    if stored is None:
+        raise HTTPException(404, "Analysis not ready")
+    from app.letter_service import render_report_pdf
+    highlights = stored.get("highlights", [])
+    damages_rows = [(h.get("category", ""), h.get("statute_citation") or "", h["damages_estimate"])
+                    for h in highlights
+                    if h.get("damages_estimate") and h["damages_estimate"] > 0]
+    pdf_bytes = render_report_pdf(highlights, damages_rows=damages_rows)
+    return Response(content=pdf_bytes, media_type="application/pdf",
+                    headers={"Content-Disposition": "attachment; filename=clause-report.pdf"})

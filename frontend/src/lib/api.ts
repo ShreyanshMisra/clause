@@ -80,6 +80,8 @@ export const api = {
     return URL.createObjectURL(await res.blob());
   },
   warmup: () => fetch(`${BASE_URL}/health`).catch(() => {}),
+  report: (file_id: string) =>
+    fetch(`${BASE_URL}/report/${file_id}`, { headers: authHeaders() }),
   demandLetter: (file_id: string, sender: object, recipient: object) =>
     fetch(`${BASE_URL}/demand-letter`, { method: "POST",
       headers: { "Content-Type": "application/json", ...authHeaders() },
