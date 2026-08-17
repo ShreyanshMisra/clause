@@ -14,6 +14,10 @@ class Statute:
     embedding: Optional[list[float]] = None
     topic_tags: list[str] = field(default_factory=list)
     source_url: str = ""
+    # Preformatted citation for sources that don't fit the "M.G.L. c.X § Y" mold
+    # (regulations like 105 CMR 410.180, case law like 363 Mass. 184). Empty for
+    # ordinary statutes, which fall back to the chapter/section citation.
+    citation: str = ""
 
 class VectorStore(Protocol):
     def seed(self, statutes: list[Statute]) -> None: ...

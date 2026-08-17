@@ -135,7 +135,8 @@ class LLMService:
 
     def analyze_chunk(self, chunk: str, statutes: list[Statute], page_hint: int = 1) -> list[FindingDraft]:
         statute_text = "\n".join(
-            f"- [{s.id}] c.{s.chapter} s.{s.section} {s.title}: {s.text}" for s in statutes)
+            f"- [{s.id}] {s.citation or f'c.{s.chapter} s.{s.section}'} {s.title}: {s.text}"
+            for s in statutes)
         data = self._client.generate_json(
             _ANALYZE_PROMPT.format(statutes=statute_text, chunk=chunk, page_hint=page_hint),
             schema=_ANALYZE_SCHEMA)
@@ -158,7 +159,7 @@ class LLMService:
                 page=int(f.get("page", page_hint) or page_hint),
                 category=f.get("category", "General"),
                 severity=f.get("severity", "medium"),
-                statute_citation=f"M.G.L. c.{st.chapter} § {st.section}",
+                statute_citation=st.citation or f"M.G.L. c.{st.chapter} § {st.section}",
                 explanation=f.get("explanation", ""),
                 damages_estimate=f.get("damages_estimate"),
                 statute_id=st.id,

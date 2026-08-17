@@ -88,5 +88,130 @@
     "text": "A person injured by an unfair or deceptive act may, after sending a written 30-day demand for relief, recover actual damages or $25, whichever is greater. If the act was a willful or knowing violation, or if the respondent refused a reasonable settlement offer in bad faith, the court may award double or treble damages and, in a successful action, reasonable attorney's fees and costs. This remedy is commonly available to tenants for landlord violations of the security-deposit and habitability statutes.",
     "topic_tags": ["demand letter", "30 day demand", "double damages", "treble damages", "attorney's fees", "consumer remedy"],
     "source_url": "https://malegislature.gov/Laws/GeneralLaws/PartI/TitleXV/Chapter93A/Section9"
+  },
+  {
+    "id": "186-15A",
+    "chapter": "186",
+    "section": "15A",
+    "title": "Waiver of statutory notices void",
+    "text": "Any provision of a residential lease or rental agreement by which a tenant waives, by any words whatsoever, the notices required under section 11 (14-day notice to quit for nonpayment) or section 12 (notice to terminate a tenancy at will) is against public policy and void. A lease term purporting to let the landlord skip or shorten these statutory notices before eviction is unenforceable.",
+    "topic_tags": ["waiver", "void clause", "notice to quit", "notice to terminate", "unenforceable", "statutory rights"],
+    "source_url": "https://malegislature.gov/Laws/GeneralLaws/PartII/TitleI/Chapter186/Section15A"
+  },
+  {
+    "id": "186-19",
+    "chapter": "186",
+    "section": "19",
+    "title": "Landlord liability for unsafe conditions after notice",
+    "text": "A landlord (other than the owner-occupant of a two- or three-family house) who receives written notice by registered or certified mail of an unsafe condition not caused by the tenant, or notice from a board of health or code-enforcement agency of a State Sanitary Code violation, must exercise reasonable care to correct the condition within a reasonable time. If the landlord fails to do so, the tenant, or any person rightfully on the premises injured as a result, has a right of action in tort for damages. Any lease provision waiving these protections is void and unenforceable.",
+    "topic_tags": ["health and safety", "code violation", "warranty of habitability", "void clause", "unenforceable"],
+    "source_url": "https://malegislature.gov/Laws/GeneralLaws/PartII/TitleI/Chapter186/Section19"
+  },
+  {
+    "id": "184-18",
+    "chapter": "184",
+    "section": "18",
+    "title": "No self-help eviction; possession only by legal process",
+    "text": "No person may attempt to recover possession of a dwelling unit from a tenant except through a lawful court process such as summary process. Self-help measures — changing the locks, removing the tenant's belongings, shutting off utilities, or otherwise forcing a tenant out without a court order — are unlawful even if the tenancy has ended or rent is unpaid. A lease clause purporting to authorize a landlord to re-enter and take possession without court process is void, and the tenant may recover damages.",
+    "topic_tags": ["self-help eviction", "lockout", "utilities", "void clause", "eviction", "quiet enjoyment"],
+    "source_url": "https://malegislature.gov/Laws/GeneralLaws/PartII/TitleI/Chapter184/Section18"
+  },
+  {
+    "id": "239-1",
+    "chapter": "239",
+    "section": "1",
+    "title": "Summary process is the exclusive path to eviction",
+    "text": "A landlord seeking to recover possession of leased residential premises must bring a summary process action in court and obtain a judgment and execution before removing a tenant; only a sheriff or constable acting under a court-issued execution may physically remove a tenant or belongings. A lease provision allowing the landlord to retake possession without going to court, or requiring the tenant to give up the right to a court hearing, contradicts this process and is unenforceable.",
+    "topic_tags": ["eviction", "summary process", "self-help eviction", "void clause", "unenforceable"],
+    "source_url": "https://malegislature.gov/Laws/GeneralLaws/PartIII/TitleIV/Chapter239/Section1"
+  },
+  {
+    "id": "186A-2",
+    "chapter": "186A",
+    "section": "2",
+    "title": "Foreclosed-property tenants: eviction only for just cause",
+    "text": "After a foreclosure, the foreclosing owner (for example, a bank) may not evict a tenant living in the property except for just cause, or unless a binding purchase-and-sale agreement has been signed with a bona fide third-party buyer. Foreclosure alone, or the mere change of ownership, is not just cause, and existing tenants keep the protections of their tenancy. A foreclosing owner who evicts a tenant in violation of this chapter is subject to statutory penalties.",
+    "topic_tags": ["foreclosure", "just cause", "eviction", "tenant protections"],
+    "source_url": "https://malegislature.gov/Laws/GeneralLaws/PartII/TitleI/Chapter186A/Section2"
+  },
+  {
+    "id": "940CMR-3.17",
+    "chapter": "940 CMR",
+    "section": "3.17",
+    "citation": "940 CMR 3.17",
+    "title": "Attorney General's landlord-tenant regulations",
+    "text": "The Attorney General's regulations make it an unfair or deceptive practice under M.G.L. c.93A for a landlord to: rent a unit containing a condition that violates the law and may endanger or materially impair the occupant's health, safety, or well-being, or is unfit for human habitation, or to fail to remedy such a violation after notice; fail to give the required signed statement of condition or otherwise mishandle a security deposit or last month's rent; include unfair terms in a rental agreement; use improper eviction or notice practices; or fail to disclose material facts. Violations expose the landlord to c.93A remedies, including multiple damages and attorney's fees.",
+    "topic_tags": ["consumer protection", "unfair", "deceptive", "warranty of habitability", "security deposit", "sanitary code"],
+    "source_url": "https://www.mass.gov/regulations/940-CMR-300-general-regulation"
+  },
+  {
+    "id": "105CMR-410.180",
+    "chapter": "105 CMR",
+    "section": "410.180",
+    "citation": "105 CMR 410.180",
+    "title": "State Sanitary Code: heat and temperature requirements",
+    "text": "During the heating season (September 15 through May 31), the owner must provide heat in every habitable room and every room containing a toilet, shower, or bathtub sufficient to maintain at least 68 degrees Fahrenheit between 7:00 A.M. and 11:00 P.M. and at least 64 degrees Fahrenheit between 11:01 P.M. and 6:59 A.M. The heating system may not cause any room to exceed 78 degrees Fahrenheit. A lease clause making the tenant responsible for heat the owner is required to provide, or waiving these minimums, does not relieve the owner of this duty.",
+    "topic_tags": ["heat", "sanitary code", "health and safety", "warranty of habitability", "utilities"],
+    "source_url": "https://www.mass.gov/doc/105-cmr-410-minimum-standards-of-fitness-for-human-habitation-state-sanitary-code-chapter-ii/download"
+  },
+  {
+    "id": "105CMR-410.190",
+    "chapter": "105 CMR",
+    "section": "410.190",
+    "citation": "105 CMR 410.190",
+    "title": "State Sanitary Code: hot water requirements",
+    "text": "The owner must provide and maintain hot water for every dwelling unit at a temperature of not less than 110 degrees Fahrenheit and not more than 130 degrees Fahrenheit, in a quantity and at a pressure sufficient for the ordinary use of all fixtures that normally need hot water. Except where the tenancy expressly and lawfully makes the tenant responsible for the hot-water utility, the owner must supply it; a lease term disclaiming this duty for required hot water is unenforceable.",
+    "topic_tags": ["hot water", "sanitary code", "health and safety", "warranty of habitability", "utilities"],
+    "source_url": "https://www.mass.gov/doc/105-cmr-410-minimum-standards-of-fitness-for-human-habitation-state-sanitary-code-chapter-ii/download"
+  },
+  {
+    "id": "105CMR-410.750",
+    "chapter": "105 CMR",
+    "section": "410.750",
+    "citation": "105 CMR 410.750",
+    "title": "State Sanitary Code: conditions that may endanger or materially impair health or safety",
+    "text": "This regulation lists conditions that are deemed to endanger or materially impair the health, safety, or well-being of occupants, such as failure to provide required heat or hot water, lack of running water, an unsafe or unsanitary source of water, shutoff or failure to restore required electricity or gas, a serious structural defect, or the presence of hazards such as unsafe wiring or exposed sewage. These serious violations trigger the tenant's strongest remedies, including rent withholding, repair-and-deduct, and code-enforcement action, and support a claim for breach of the warranty of habitability.",
+    "topic_tags": ["sanitary code", "warranty of habitability", "health and safety", "code violation", "rent withholding", "repair and deduct"],
+    "source_url": "https://www.mass.gov/doc/105-cmr-410-minimum-standards-of-fitness-for-human-habitation-state-sanitary-code-chapter-ii/download"
+  },
+  {
+    "id": "broker-fee-2025",
+    "chapter": "Broker Fees",
+    "section": "2025",
+    "citation": "Massachusetts broker-fee law (effective Aug. 1, 2025)",
+    "title": "Tenant-paid broker fees prohibited",
+    "text": "As of August 1, 2025, a residential tenant may only be required to pay a real-estate broker's fee if the tenant is the party who hired the broker. A landlord may not shift the cost of a broker the landlord engaged onto the tenant. This applies to leases entered on or after the effective date. Improperly charging a tenant a landlord-hired broker's fee is treated as an unfair or deceptive practice, exposing the violator to M.G.L. c.93A remedies, including up to treble damages and attorney's fees. (Leases executed before August 1, 2025 are governed by the prior rule.)",
+    "topic_tags": ["broker fee", "unlawful fees", "move-in costs", "consumer protection", "unfair"],
+    "source_url": "https://www.mass.gov/doc/broker-fee-advisory/download"
+  },
+  {
+    "id": "case-hemingway",
+    "chapter": "Case Law",
+    "section": "363 Mass. 184",
+    "citation": "Boston Housing Authority v. Hemingway, 363 Mass. 184 (1973)",
+    "title": "Implied warranty of habitability (Hemingway)",
+    "text": "The Supreme Judicial Court held that every residential lease — written or oral, for a term or at will — carries an implied warranty that the premises are fit for human habitation and will remain so, replacing the old rule of caveat emptor. The landlord's duty to deliver and maintain habitable premises and the tenant's duty to pay rent are mutually dependent. A tenant may raise a breach of the warranty as a defense to a claim for rent, and damages are measured by the difference between the value of the premises as warranted and their value in the defective condition. A lease clause requiring the tenant to accept the premises 'as is' or waiving the warranty of habitability is void.",
+    "topic_tags": ["warranty of habitability", "case law", "void clause", "rent withholding", "health and safety"],
+    "source_url": "https://masscases.com/cases/sjc/363/363mass184.html"
+  },
+  {
+    "id": "case-haddad",
+    "chapter": "Case Law",
+    "section": "410 Mass. 855",
+    "citation": "Haddad v. Gonzalez, 410 Mass. 855 (1991)",
+    "title": "Uninhabitable conditions as a Chapter 93A violation (Haddad)",
+    "text": "The Supreme Judicial Court affirmed a tenant's recovery where a landlord kept the unit in serious disrepair. The court held that a landlord's breach of the warranty of habitability and interference with quiet enjoyment can constitute an unfair or deceptive practice under M.G.L. c.93A, that severe emotional distress caused by such conduct is a compensable personal injury under c.93A, and that a knowing or willful violation supports trebling of the combined damages plus attorney's fees. Habitability and quiet-enjoyment violations can therefore expose a landlord to multiple damages, not just a rent abatement.",
+    "topic_tags": ["warranty of habitability", "quiet enjoyment", "consumer protection", "treble damages", "attorney's fees", "case law"],
+    "source_url": "https://masscases.com/cases/sjc/410/410mass855.html"
+  },
+  {
+    "id": "case-simon",
+    "chapter": "Case Law",
+    "section": "385 Mass. 91",
+    "citation": "Simon v. Solomon, 385 Mass. 91 (1982)",
+    "title": "Emotional-distress damages for uninhabitable conditions (Simon)",
+    "text": "Where a tenant's apartment repeatedly flooded with water and sewage, the Supreme Judicial Court upheld recovery for breach of the implied warranty of habitability and for reckless infliction of emotional distress, along with attorney's fees. The court recognized that a landlord's failure to remedy serious conditions can support emotional-distress damages, but cautioned against double recovery: a separate award for interference with quiet enjoyment under c.186 §14 cannot duplicate damages already recovered for the same conditions under the warranty of habitability and emotional-distress claims.",
+    "topic_tags": ["warranty of habitability", "quiet enjoyment", "emotional distress", "case law", "health and safety"],
+    "source_url": "https://masscases.com/cases/sjc/385/385mass91.html"
   }
 ]
