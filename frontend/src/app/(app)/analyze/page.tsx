@@ -80,6 +80,13 @@ export default function AnalyzePage() {
           Spot illegal and risky clauses in your rental agreement&nbsp;—
           in seconds, not hours.
         </p>
+        <p
+          className="enter-2 max-w-xs text-xs leading-relaxed"
+          style={{ color: "var(--ink-subtle)", letterSpacing: "0.005em" }}
+        >
+          Clause is not a law firm and this is not legal advice. For informational
+          purposes only&nbsp;— consult a licensed attorney for your situation.
+        </p>
       </div>
 
       {/* ── Upload card ────────────────────────────────────────────────── */}

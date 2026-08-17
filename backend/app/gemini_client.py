@@ -19,7 +19,7 @@ class GeminiClient:
     def from_env(cls) -> "GeminiClient":
         import google.generativeai as genai
         genai.configure(api_key=os.environ["GEMINI_API_KEY"])
-        model = genai.GenerativeModel(os.environ.get("GEMINI_MODEL", "gemini-3-pro"))
+        model = genai.GenerativeModel(os.environ.get("GEMINI_MODEL", "gemini-3.1-pro-preview"))
         embed_model = os.environ.get("GEMINI_EMBED_MODEL", "models/gemini-embedding-001")
         def embed_fn(text: str) -> list:
             r = genai.embed_content(model=embed_model, content=text,

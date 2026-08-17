@@ -11,6 +11,12 @@ services:
         sync: false
       - key: VECTOR_BACKEND
         value: local
+      # Adjudication + fast models. Pinned so the deploy never falls back to a
+      # stale code default (an unavailable model 404s and every analysis fails).
+      - key: GEMINI_MODEL
+        value: gemini-3.1-pro-preview
+      - key: GEMINI_FAST_MODEL
+        value: gemini-3.5-flash
       - key: ALLOWED_ORIGINS
         sync: false
         # REQUIRED: set to your Vercel URL, e.g. https://clause-yourapp.vercel.app
