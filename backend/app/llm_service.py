@@ -174,13 +174,16 @@ class LLMService:
 
     def draft_demand_letter(self, findings: list[FindingDraft], metadata: Metadata,
                             sender: dict, recipient: dict) -> str:
-        issues = "\n".join(f"- {f.category} ({f.severity}): {f.explanation} "
-                           f"[{f.statute_citation}]" for f in findings)
+        issues = "\n".join(
+            f"- {f.category} ({f.severity}) [{f.statute_citation}]: {f.explanation}"
+            + (f" Reasoning: {f.legal_reasoning}" if f.legal_reasoning else "")
+            for f in findings)
         prompt = (
             _INJECTION_GUARD
-            + "Draft the BODY (HTML paragraphs only, no <html>/<head>) of a firm but professional "
-            "demand letter from a Massachusetts tenant to a landlord citing these issues and "
-            "requesting remedy within 30 days.\n\n"
+            + "Draft the BODY (HTML paragraphs only, no <html>/<head>, and do NOT include a "
+            "damages table — that is added separately) of a firm but professional demand letter "
+            "from a Massachusetts tenant to a landlord. Cite each issue's statute, explain the "
+            "violation, and demand remedy within 30 days.\n\n"
             f"SENDER: {sender}\nRECIPIENT: {recipient}\nISSUES:\n{issues}"
         )
         return self._client.generate_text(prompt)

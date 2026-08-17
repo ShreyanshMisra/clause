@@ -343,10 +343,16 @@ def demand_letter(body: DemandLetterBody, request: Request,
     from app.llm_service import FindingDraft
     drafts = [FindingDraft(quoted_text=h.quoted_text, page=h.page, category=h.category,
                            severity=h.severity.value, statute_citation=h.statute_citation,
-                           explanation=h.explanation, damages_estimate=h.damages_estimate)
+                           explanation=h.explanation, damages_estimate=h.damages_estimate,
+                           legal_reasoning=h.legal_reasoning, damages_basis=h.damages_basis)
               for h in result.highlights]
     md = state.metadata_store.get(body.file_id) or result.documentMetadata
     body_html = _llm().draft_demand_letter(drafts, md, body.sender, body.recipient)
-    pdf_bytes = render_letter_pdf(body_html, title="Demand Letter")
+    # Render the damages table deterministically (not by the LLM), one row per
+    # finding with a monetary remedy, plus a total.
+    damages_rows = [(h.category, h.statute_citation or "", h.damages_estimate)
+                    for h in result.highlights
+                    if h.damages_estimate and h.damages_estimate > 0]
+    pdf_bytes = render_letter_pdf(body_html, title="Demand Letter", damages_rows=damages_rows)
     return Response(content=pdf_bytes, media_type="application/pdf",
                     headers={"Content-Disposition": "attachment; filename=demand-letter.pdf"})
