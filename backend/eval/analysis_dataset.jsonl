@@ -1,0 +1,3 @@
+{"lease_text": "The security deposit shall be retained by the landlord in full upon move-out and is non-refundable regardless of the condition of the premises.", "expected": [{"category": "Security deposit", "statute": "M.G.L. c.186 § 15B"}]}
+{"lease_text": "The landlord may enter the apartment at any time without notice for any reason at the landlord's sole discretion.", "expected": [{"category": "Quiet enjoyment", "statute": "M.G.L. c.186 § 14"}]}
+{"lease_text": "If the tenant reports code violations to the Board of Health, the landlord may terminate this tenancy immediately.", "expected": [{"category": "Retaliation", "statute": "M.G.L. c.186 § 18"}]}
