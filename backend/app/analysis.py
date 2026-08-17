@@ -1,4 +1,6 @@
 import os
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from typing import Optional
 from app.models import AnalysisResult, AnalysisSummary, TopIssue, Severity, Metadata
 from app.highlight import build_highlight
@@ -13,6 +15,9 @@ _RISK_LABEL = {3: "Critical", 2: "High", 1: "Medium", 0: "Low"}
 # Pages analyzed per LLM call. Grouping cuts request count (e.g. 16 pages / 4 = 4 calls
 # instead of 16) to stay under free-tier daily quotas; page markers keep highlights accurate.
 _PAGE_GROUP = max(1, int(os.environ.get("ANALYSIS_PAGE_GROUP", "2")))
+# Chunks are independent, so analyze them concurrently to cut wall-clock latency on
+# multi-page documents (bounded so we don't hammer the model's rate limits).
+_CONCURRENCY = max(1, int(os.environ.get("ANALYSIS_CONCURRENCY", "4")))
 
 def _apply_statutory_damages(drafts, metadata: Optional[Metadata]) -> None:
     """Override the model's damages estimate with a code-computed statutory figure
@@ -35,38 +40,51 @@ def analyze_document(file_id: str, pdf_path: str, redacted_pages: list[str],
         registry.update(file_id, status="processing", progress=20, message="Loading document...")
         pages = redacted_pages or [""]
         groups = [pages[i:i + _PAGE_GROUP] for i in range(0, len(pages), _PAGE_GROUP)]
-        drafts = []
-        errors = 0
-        last_error = None
+
+        # Build the non-empty chunks up front (each tagged with its group index so
+        # results can be reassembled in document order after concurrent execution).
+        chunks = []
         for gi, group in enumerate(groups):
             base = gi * _PAGE_GROUP
-            first, last = base + 1, base + len(group)
-            progress = 20 + int(60 * (gi + 1) / len(groups))
-            registry.update(file_id, progress=progress,
-                            message=f"Analyzing pages {first}-{last} of {len(pages)}...")
-            # Concatenate the group's pages with page markers so the LLM can attribute
-            # each finding to the correct page (keeps highlight coordinates accurate).
             marked = "\n\n".join(f"=== PAGE {base + j + 1} ===\n{txt}"
                                  for j, txt in enumerate(group) if txt.strip())
-            if not marked.strip():
-                continue
-            # Resilience: a transient per-chunk failure (timeout/rate-limit) skips that
-            # chunk instead of failing the whole document — partial results beat none.
-            try:
-                # Retrieve a wider candidate set, then let the hybrid score (vector +
-                # keyword overlap with the chunk) rerank; keep the top_k for the LLM.
-                retrieve_k = max(top_k, int(os.environ.get("ANALYSIS_RETRIEVE_K", top_k * 3)))
-                candidates = store.search(embedder.embed(marked), k=retrieve_k, query_text=marked)
-                statutes = candidates[:top_k]
-                drafts.extend(llm.analyze_chunk(marked, statutes, page_hint=first))
-            except Exception as e:  # noqa: BLE001
-                errors += 1
-                last_error = e
-                continue
+            if marked.strip():
+                chunks.append((gi, base + 1, marked))
 
-        # Only hard-fail if every chunk errored (e.g. quota exhausted / bad key).
-        if not drafts and errors and last_error is not None:
-            raise last_error
+        retrieve_k = max(top_k, int(os.environ.get("ANALYSIS_RETRIEVE_K", top_k * 3)))
+        done = 0
+        lock = threading.Lock()
+
+        def analyze_one(item):
+            """Retrieve statutes for one chunk and analyze it. Returns (gi, drafts, error);
+            a per-chunk failure is captured, not raised, so one bad chunk can't sink the
+            whole document."""
+            nonlocal done
+            gi, first, marked = item
+            result: tuple[int, list, Optional[Exception]]
+            try:
+                candidates = store.search(embedder.embed(marked), k=retrieve_k, query_text=marked)
+                result = (gi, llm.analyze_chunk(marked, candidates[:top_k], page_hint=first), None)
+            except Exception as e:  # noqa: BLE001
+                result = (gi, [], e)
+            with lock:
+                done += 1
+                registry.update(file_id, progress=20 + int(60 * done / max(1, len(chunks))),
+                                message=f"Analyzing… ({done}/{len(chunks)})")
+            return result
+
+        results = []
+        if chunks:
+            with ThreadPoolExecutor(max_workers=min(_CONCURRENCY, len(chunks))) as pool:
+                results = list(pool.map(analyze_one, chunks))
+
+        errors = [r[2] for r in results if r[2] is not None]
+        # Reassemble drafts in document order for deterministic output.
+        drafts = [d for gi, ds, _ in sorted(results, key=lambda r: r[0]) for d in ds]
+
+        # Only hard-fail if there were chunks and every one errored (e.g. quota/bad key).
+        if not drafts and errors and len(errors) == len(chunks):
+            raise errors[-1]
 
         # Replace model-guessed damages with statutory figures where the law is fixed.
         _apply_statutory_damages(drafts, metadata)

@@ -76,6 +76,34 @@ def test_statutory_damages_override_model_estimate():
     assert "treble" in result.highlights[0].damages_basis.lower()
 
 
+def test_parallel_chunks_return_in_document_order():
+    import re
+    from app.llm_service import LLMService
+
+    class PageClient:
+        """Returns a finding whose category is the chunk's first page number, so we
+        can assert results reassemble in document order despite concurrency."""
+        def embed(self, text): return [1.0, 0.0, 0.0]
+        def generate_json(self, prompt, schema=None):
+            m = re.search(r"=== PAGE (\d+) ===", prompt)
+            page = m.group(1) if m else "0"
+            return {"findings": [{"quoted_text": "x", "page": int(page), "category": page,
+                                  "severity": "high", "statute_id": "a", "explanation": "e"}]}
+
+    registry = JobRegistry()
+    registry.create("fid-order")
+    store = LocalVectorStore()
+    store.seed([Statute(id="a", chapter="186", section="15B", title="D", text="d",
+                        embedding=[1.0, 0.0, 0.0])])
+    pages = [f"page {i} content" for i in range(1, 7)]  # 6 pages -> 3 groups
+    result = analyze_document("fid-order", FIX, redacted_pages=pages,
+                              llm=LLMService(PageClient()), embedder=PageClient(),
+                              store=store, registry=registry)
+    # One finding per group, categories = first page of each group, ascending.
+    cats = [int(h.category) for h in result.highlights]
+    assert cats == sorted(cats) and cats == [1, 3, 5]
+
+
 def test_analyze_document_marks_failed_on_error():
     import pytest
     from app.llm_service import LLMService
