@@ -28,6 +28,15 @@ class GeminiClient:
             return r["embedding"]
         return cls(model=model, embed_fn=embed_fn)
 
+    @classmethod
+    def fast_from_env(cls) -> "GeminiClient":
+        """Build a client on the cheap/fast model (GEMINI_FAST_MODEL) for extraction
+        steps like the PII assist pass. No embedder — generation only."""
+        import google.generativeai as genai
+        genai.configure(api_key=os.environ["GEMINI_API_KEY"])
+        model = genai.GenerativeModel(os.environ.get("GEMINI_FAST_MODEL", "gemini-3.5-flash"))
+        return cls(model=model)
+
     def embed(self, text: str) -> list:
         if self._embed_fn is None:
             raise RuntimeError("GeminiClient has no embedder; build it via from_env()")

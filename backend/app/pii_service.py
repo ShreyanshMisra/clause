@@ -3,7 +3,22 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
+from app.pii_llm import llm_pii_spans
 from app.redaction_map import RedactionSpan
+
+# Optional fast-model client for the LLM PII assist layer, injected at startup
+# (see main._init_services). None keeps redaction pure/regex+NER-only for tests.
+_pii_client: Any = None
+
+
+def set_pii_client(client: Any) -> None:
+    global _pii_client
+    _pii_client = client
+
+
+def _llm_assist_enabled() -> bool:
+    return (_pii_client is not None
+            and os.environ.get("PII_LLM_ASSIST", "").lower() in ("1", "true", "yes", "on"))
 
 
 @dataclass
@@ -104,6 +119,10 @@ def _collect_spans(text: str) -> list[tuple[int, int, str]]:
         for r in analyzer.analyze(text=text, entities=_NER_ENTITIES, language="en"):
             if r.score >= _NER_SCORE_THRESHOLD and not _allowed(text[r.start:r.end]):
                 raw.append((r.start, r.end, _ENTITY_PLACEHOLDER.get(r.entity_type, r.entity_type)))
+    if _llm_assist_enabled():
+        for s in llm_pii_spans(text, _pii_client):
+            if not _allowed(text[s.start:s.end]):
+                raw.append((s.start, s.end, s.entity_type))
     return raw
 
 

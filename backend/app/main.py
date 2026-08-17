@@ -57,6 +57,15 @@ def _init_services() -> None:
         state.seeded = True
     except Exception as exc:
         logging.warning("Statute seeding failed at startup: %s — will retry on first analysis", exc)
+    # Optional second PII layer on the fast model (see app.pii_llm). Off unless
+    # PII_LLM_ASSIST is set; tolerate a missing key so the app still boots.
+    if os.environ.get("PII_LLM_ASSIST", "").lower() in ("1", "true", "yes", "on"):
+        try:
+            from app.gemini_client import GeminiClient
+            from app.pii_service import set_pii_client
+            set_pii_client(GeminiClient.fast_from_env())
+        except Exception as exc:
+            logging.warning("PII LLM assist unavailable: %s", exc)
 
 
 @asynccontextmanager
