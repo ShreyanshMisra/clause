@@ -13,6 +13,7 @@ class FindingDraft:
     statute_citation: Optional[str]
     explanation: str
     damages_estimate: Optional[float]
+    statute_id: str = ""
     legal_reasoning: str = ""
     severity_rationale: str = ""
     recommended_action: str = ""
@@ -160,6 +161,7 @@ class LLMService:
                 statute_citation=f"M.G.L. c.{st.chapter} § {st.section}",
                 explanation=f.get("explanation", ""),
                 damages_estimate=f.get("damages_estimate"),
+                statute_id=st.id,
                 legal_reasoning=f.get("legal_reasoning", ""),
                 severity_rationale=f.get("severity_rationale", ""),
                 recommended_action=f.get("recommended_action", ""),

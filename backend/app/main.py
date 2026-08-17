@@ -251,16 +251,27 @@ def _run_analysis(file_id: str):
         from app.bootstrap import seed_local_if_needed
         seed_local_if_needed(state.vector_store, state.embedder)
         state.seeded = True
+    # Ensure metadata exists — it feeds the statutory damages calculator and the
+    # demand letter. If the UI didn't call /extract-metadata, derive it inline.
+    md = state.metadata_store.get(file_id)
+    if md is None:
+        text = state.redacted_text.get(file_id)
+        if text:
+            try:
+                md = state.llm.extract_metadata(text)
+                state.metadata_store[file_id] = md
+            except Exception:
+                md = None
     try:
         result = analyze_document(file_id, state.pdf_path(file_id),
                                   state.redacted_pages.get(file_id, []),
-                                  state.llm, state.embedder, state.vector_store, state.registry)
+                                  state.llm, state.embedder, state.vector_store, state.registry,
+                                  metadata=md)
     except Exception:
         # Registry already marked failed; persist it so the dashboard card
         # doesn't show a perpetual "Analysing…" for this case.
         db.set_status(file_id, "failed")
         raise
-    md = state.metadata_store.get(file_id)
     if md is not None:
         result.documentMetadata = md
     state.results[file_id] = result

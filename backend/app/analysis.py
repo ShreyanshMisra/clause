@@ -1,8 +1,10 @@
 import os
-from app.models import AnalysisResult, AnalysisSummary, TopIssue, Severity
+from typing import Optional
+from app.models import AnalysisResult, AnalysisSummary, TopIssue, Severity, Metadata
 from app.highlight import build_highlight
 from app.jobs import JobRegistry
 from app.llm_service import LLMService
+from app.remedy import compute_damages, money
 from app.vector_store import VectorStore
 
 _RISK_ORDER = {Severity.illegal: 3, Severity.high: 2, Severity.medium: 1, Severity.favorable: 0}
@@ -12,9 +14,23 @@ _RISK_LABEL = {3: "Critical", 2: "High", 1: "Medium", 0: "Low"}
 # instead of 16) to stay under free-tier daily quotas; page markers keep highlights accurate.
 _PAGE_GROUP = max(1, int(os.environ.get("ANALYSIS_PAGE_GROUP", "2")))
 
+def _apply_statutory_damages(drafts, metadata: Optional[Metadata]) -> None:
+    """Override the model's damages estimate with a code-computed statutory figure
+    wherever MA law fixes the remedy, using amounts from the document metadata."""
+    if metadata is None:
+        return
+    inputs = {"security_deposit": money(metadata.securityDeposit),
+              "monthly_rent": money(metadata.monthlyRent)}
+    for d in drafts:
+        remedy = compute_damages(d.statute_id, inputs)
+        if remedy.amount is not None:
+            d.damages_estimate = remedy.amount
+            d.damages_basis = remedy.basis
+
+
 def analyze_document(file_id: str, pdf_path: str, redacted_pages: list[str],
                      llm: LLMService, embedder, store: VectorStore, registry: JobRegistry,
-                     top_k: int = 6) -> AnalysisResult:
+                     top_k: int = 6, metadata: Optional[Metadata] = None) -> AnalysisResult:
     try:
         registry.update(file_id, status="processing", progress=20, message="Loading document...")
         pages = redacted_pages or [""]
@@ -51,6 +67,9 @@ def analyze_document(file_id: str, pdf_path: str, redacted_pages: list[str],
         # Only hard-fail if every chunk errored (e.g. quota exhausted / bad key).
         if not drafts and errors and last_error is not None:
             raise last_error
+
+        # Replace model-guessed damages with statutory figures where the law is fixed.
+        _apply_statutory_damages(drafts, metadata)
 
         registry.update(file_id, progress=90, message="Extracting highlight positions...")
         highlights = [build_highlight(d, pdf_path, i) for i, d in enumerate(drafts)]

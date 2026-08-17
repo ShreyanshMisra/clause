@@ -49,6 +49,33 @@ def test_analyze_document_handles_zero_findings():
     assert registry.get("fid2").status == "completed"
 
 
+def test_statutory_damages_override_model_estimate():
+    from app.llm_service import LLMService
+    from app.models import Metadata
+
+    class DepositClient:
+        def embed(self, text): return [1.0, 0.0, 0.0]
+        def generate_json(self, prompt, schema=None):
+            from app.pdf_service import extract_pages
+            word = extract_pages(FIX)[0].text.split()[0]
+            return {"findings": [{"quoted_text": word, "page": 1, "category": "Deposit",
+                                  "severity": "illegal", "statute_id": "186-15B",
+                                  "explanation": "forfeiture clause", "damages_estimate": 99}]}
+
+    registry = JobRegistry()
+    registry.create("fid-dmg", filename="s.pdf")
+    store = LocalVectorStore()
+    store.seed([Statute(id="186-15B", chapter="186", section="15B", title="Deposits",
+                        text="return within 30 days", embedding=[1.0, 0.0, 0.0])])
+    md = Metadata(monthlyRent="$2,000", securityDeposit="$1,500")
+    result = analyze_document("fid-dmg", FIX, redacted_pages=["chunk"],
+                              llm=LLMService(DepositClient()), embedder=DepositClient(),
+                              store=store, registry=registry, metadata=md)
+    # Model said 99; code recomputes treble the $1,500 deposit = 4500.
+    assert result.highlights[0].damages_estimate == 4500.0
+    assert "treble" in result.highlights[0].damages_basis.lower()
+
+
 def test_analyze_document_marks_failed_on_error():
     import pytest
     from app.llm_service import LLMService
