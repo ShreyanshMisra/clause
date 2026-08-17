@@ -25,6 +25,7 @@ _REGEX = {
         r"\b\d{1,6}\s+(?:[A-Za-z0-9.'-]+\s+){0,4}"
         r"(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Lane|Ln|Drive|Dr|Court|Ct|"
         r"Way|Place|Pl|Terrace|Ter|Circle|Cir|Highway|Hwy)\b\.?"
+        # Optional unit and city/state/ZIP tail so a full mailing address is one span.
         r"(?:\s*,?\s*(?:Apt|Apartment|Unit|Suite|Ste|Rm|Room|#)\s*\.?\s*[A-Za-z0-9-]+)?"
         r"(?:\s*,\s*[A-Za-z .'-]+,\s*[A-Z]{2}\s+\d{5}(?:-\d{4})?)?",
         re.IGNORECASE,
