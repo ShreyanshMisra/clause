@@ -2,7 +2,7 @@ from app.llm_service import LLMService
 
 class FakeClient:
     def __init__(self, payload): self.payload = payload; self.calls = []
-    def generate_json(self, prompt):
+    def generate_json(self, prompt, schema=None):
         self.calls.append(prompt); return self.payload
     def generate_text(self, prompt): return "<p>letter body</p>"
     def embed(self, text): return [0.1, 0.2, 0.3]
@@ -16,10 +16,15 @@ def test_extract_metadata_maps_fields():
 
 def test_analyze_chunk_grounds_and_canonicalizes_citation():
     from app.vector_store import Statute
-    statutes = [Statute(id="186-15B", chapter="186", section="15B", title="Deposits", text="...")]
+    statutes = [Statute(id="186-15B", chapter="186", section="15B", title="Deposits",
+                        text="A lessor shall return the deposit within 30 days.")]
     client = FakeClient({"findings": [
         {"quoted_text": "no return of deposit", "page": 2, "category": "Deposit",
          "severity": "illegal", "statute_id": "186-15B",
+         "legal_reasoning": "clause forfeits deposit, violating 15B",
+         "severity_rationale": "explicit forfeiture is illegal",
+         "recommended_action": "demand return of the deposit",
+         "confidence": 0.9,
          "explanation": "deposits must be returned", "damages_estimate": 1500}
     ]})
     svc = LLMService(client)
@@ -27,6 +32,11 @@ def test_analyze_chunk_grounds_and_canonicalizes_citation():
     assert drafts[0].severity == "illegal" and drafts[0].damages_estimate == 1500
     # citation comes from our corpus, canonicalized — never the raw model output
     assert drafts[0].statute_citation == "M.G.L. c.186 § 15B"
+    # reasoning fields propagate; statute_quote is sourced from OUR corpus text
+    assert drafts[0].legal_reasoning == "clause forfeits deposit, violating 15B"
+    assert drafts[0].recommended_action == "demand return of the deposit"
+    assert drafts[0].confidence == 0.9
+    assert drafts[0].statute_quote == "A lessor shall return the deposit within 30 days."
 
 def test_analyze_chunk_drops_ungrounded_findings():
     from app.vector_store import Statute

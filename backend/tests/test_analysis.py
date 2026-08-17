@@ -7,7 +7,7 @@ FIX = str(Path(__file__).parent / "fixtures" / "sample-lease.pdf")
 
 class FakeClient:
     def embed(self, text): return [1.0, 0.0, 0.0]
-    def generate_json(self, prompt):
+    def generate_json(self, prompt, schema=None):
         from app.pdf_service import extract_pages
         word = extract_pages(FIX)[0].text.split()[0]
         return {"findings": [{"quoted_text": word, "page": 1, "category": "Deposit",
@@ -34,7 +34,7 @@ def test_analyze_document_handles_zero_findings():
     from app.llm_service import LLMService
     class EmptyClient:
         def embed(self, text): return [1.0, 0.0, 0.0]
-        def generate_json(self, prompt): return {"findings": []}
+        def generate_json(self, prompt, schema=None): return {"findings": []}
     registry = JobRegistry()
     registry.create("fid2")
     store = LocalVectorStore()
@@ -54,7 +54,7 @@ def test_analyze_document_marks_failed_on_error():
     from app.llm_service import LLMService
     class BoomClient:
         def embed(self, text): raise RuntimeError("boom")
-        def generate_json(self, prompt): return {"findings": []}
+        def generate_json(self, prompt, schema=None): return {"findings": []}
     registry = JobRegistry()
     registry.create("fid3")
     store = LocalVectorStore()

@@ -9,7 +9,7 @@ FIX = Path(__file__).parent / "fixtures" / "sample-lease.pdf"
 
 class FakeClient:
     def embed(self, text): return [1.0, 0.0, 0.0]
-    def generate_json(self, prompt):
+    def generate_json(self, prompt, schema=None):
         if "metadata" in prompt.lower():
             return {"parties": {"landlord": "L", "tenant": "T", "property": "P"},
                     "monthlyRent": "$1000", "leaseTerm": "12mo", "securityDeposit": "$1500"}

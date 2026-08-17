@@ -60,7 +60,14 @@ class GeminiClient:
         config: Optional[dict] = None
         if schema is not None:
             config = {"response_mime_type": "application/json", "response_schema": schema}
-        raw = self._generate(prompt, config)
+        try:
+            raw = self._generate(prompt, config)
+        except Exception:
+            # A model/SDK that rejects the schema config shouldn't break analysis —
+            # retry prompt-only and lean on the fenced-JSON parser below.
+            if config is None:
+                raise
+            raw = self._generate(prompt)
         m = _FENCE.search(raw)
         candidate = m.group(1) if m else raw.strip()
         try:

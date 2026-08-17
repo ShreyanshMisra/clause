@@ -28,4 +28,10 @@ def build_highlight(draft: FindingDraft, pdf_path: str, index: int) -> Finding:
         explanation=draft.explanation,
         damages_estimate=draft.damages_estimate,
         position=position,
+        legal_reasoning=draft.legal_reasoning,
+        severity_rationale=draft.severity_rationale,
+        recommended_action=draft.recommended_action,
+        confidence=draft.confidence,
+        statute_quote=draft.statute_quote,
+        damages_basis=draft.damages_basis,
     )

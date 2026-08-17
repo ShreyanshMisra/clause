@@ -36,6 +36,13 @@ class Finding(BaseModel):
     explanation: str
     damages_estimate: Optional[float] = None
     position: Optional[HighlightPosition] = None
+    # Reasoning-rich fields (default "" / 0.0 so older persisted results still load).
+    legal_reasoning: str = ""
+    severity_rationale: str = ""
+    recommended_action: str = ""
+    confidence: float = 0.0
+    statute_quote: str = ""       # verbatim statutory language, sourced from our corpus
+    damages_basis: str = ""       # how damages_estimate was derived
 
 class Parties(BaseModel):
     landlord: str = ""
