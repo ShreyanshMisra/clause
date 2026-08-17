@@ -37,7 +37,11 @@ def analyze_document(file_id: str, pdf_path: str, redacted_pages: list[str],
             # Resilience: a transient per-chunk failure (timeout/rate-limit) skips that
             # chunk instead of failing the whole document — partial results beat none.
             try:
-                statutes = store.search(embedder.embed(marked), k=top_k)
+                # Retrieve a wider candidate set, then let the hybrid score (vector +
+                # keyword overlap with the chunk) rerank; keep the top_k for the LLM.
+                retrieve_k = max(top_k, int(os.environ.get("ANALYSIS_RETRIEVE_K", top_k * 3)))
+                candidates = store.search(embedder.embed(marked), k=retrieve_k, query_text=marked)
+                statutes = candidates[:top_k]
                 drafts.extend(llm.analyze_chunk(marked, statutes, page_hint=first))
             except Exception as e:  # noqa: BLE001
                 errors += 1

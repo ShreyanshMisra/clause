@@ -10,9 +10,13 @@ def load_corpus() -> list[dict]:
 def build_statutes(items: list[dict], embedder) -> list[Statute]:
     out = []
     for it in items:
-        emb = embedder.embed(f"{it['title']}. {it['text']}")
+        tags = it.get("topic_tags", [])
+        # Fold title + topic tags into the embedded text so lexical topic cues
+        # (e.g. "deposit", "retaliation") strengthen retrieval.
+        emb = embedder.embed(f"{it['title']}. {' '.join(tags)}. {it['text']}")
         out.append(Statute(id=it["id"], chapter=it["chapter"], section=it["section"],
-                           title=it["title"], text=it["text"], embedding=emb))
+                           title=it["title"], text=it["text"], embedding=emb,
+                           topic_tags=tags, source_url=it.get("source_url", "")))
     return out
 
 def main() -> None:
